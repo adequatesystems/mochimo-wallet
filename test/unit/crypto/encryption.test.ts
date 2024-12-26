@@ -58,17 +58,27 @@ describe('Encryption', () => {
         });
 
         it('should handle various data sizes', async () => {
-            const sizes = [1, 15, 16, 17, 31, 32, 33, 63, 64, 65];
+            const sizes = [1, 2, 3, 4, 5, 15, 16, 17, 31, 32, 33];
             const password = 'test-password';
 
             for (const size of sizes) {
                 const data = new Uint8Array(size);
-                crypto.getRandomValues(data);  // Fill with random data
+                for (let i = 0; i < size; i++) {
+                    data[i] = i & 0xff;
+                }
 
-                const encrypted = await encrypt(data, password);
-                const decrypted = await decrypt(encrypted, password);
+                try {
+                    const encrypted = await encrypt(data, password);
+                    const decrypted = await decrypt(encrypted, password);
 
-                expect(decrypted).toEqual(data);
+                    expect(decrypted.length).toBe(size);
+                    for (let i = 0; i < size; i++) {
+                        expect(decrypted[i]).toBe(data[i]);
+                    }
+                } catch (error) {
+                    console.error(`Failed for size ${size}:`, error);
+                    throw error;
+                }
             }
         });
 

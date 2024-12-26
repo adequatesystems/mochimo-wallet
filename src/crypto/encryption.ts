@@ -12,10 +12,10 @@ export interface EncryptedData {
 /**
  * Derives an encryption key from a password
  */
-async function deriveKey(password: string, salt: lib.WordArray, iterations = DEFAULT_ITERATIONS): Promise<lib.WordArray> {
+async function deriveKey(password: string, salt: lib.WordArray): Promise<lib.WordArray> {
     return PBKDF2(password, salt, {
         keySize: 256 / 32,  // AES-256
-        iterations
+        iterations: DEFAULT_ITERATIONS
     });
 }
 
@@ -23,17 +23,6 @@ async function deriveKey(password: string, salt: lib.WordArray, iterations = DEF
  * Encrypts data with a password
  */
 export async function encrypt(data: Uint8Array, password: string): Promise<EncryptedData> {
-    // Handle empty data as special case
-    if (data.length === 0) {
-        const salt = lib.WordArray.random(16);
-        const iv = lib.WordArray.random(16);
-        return {
-            data: '',  // Empty string for empty data
-            iv: iv.toString(enc.Base64),
-            salt: salt.toString(enc.Base64)
-        };
-    }
-
     // Generate random salt and IV
     const salt = lib.WordArray.random(16);
     const iv = lib.WordArray.random(16);
@@ -41,27 +30,20 @@ export async function encrypt(data: Uint8Array, password: string): Promise<Encry
     // Derive key from password
     const key = await deriveKey(password, salt);
     
-    // Convert data to WordArray
-    const words: number[] = [];
-    for (let i = 0; i < data.length; i += 4) {
-        words.push(
-            (data[i] << 24) |
-            ((data[i + 1] || 0) << 16) |
-            ((data[i + 2] || 0) << 8) |
-            (data[i + 3] || 0)
-        );
-    }
-    const dataWords = lib.WordArray.create(words, data.length);
+    // Convert data to base64 (empty array becomes empty string)
+    const base64Data = data.length > 0 ? Buffer.from(data).toString('base64') : '';
     
-    // Encrypt
-    const encrypted = AES.encrypt(dataWords, key, {
-        iv,
-        mode: mode.CBC,
-        padding: pad.Pkcs7
-    });
+    // Encrypt (empty string becomes empty ciphertext)
+    const encrypted = base64Data 
+        ? AES.encrypt(base64Data, key, {
+            iv,
+            mode: mode.CBC,
+            padding: pad.Pkcs7
+        }).toString()
+        : '';
     
     return {
-        data: encrypted.toString(),
+        data: encrypted,
         iv: iv.toString(enc.Base64),
         salt: salt.toString(enc.Base64)
     };
@@ -71,8 +53,8 @@ export async function encrypt(data: Uint8Array, password: string): Promise<Encry
  * Decrypts data with a password
  */
 export async function decrypt(encrypted: EncryptedData, password: string): Promise<Uint8Array> {
-    // Handle empty data as special case
-    if (encrypted.data === '') {
+    // Handle empty data
+    if (!encrypted.data) {
         return new Uint8Array(0);
     }
 
@@ -90,23 +72,16 @@ export async function decrypt(encrypted: EncryptedData, password: string): Promi
             mode: mode.CBC,
             padding: pad.Pkcs7
         });
-        
-        // If decryption fails or padding is invalid, sigBytes will be 0
-        if (decrypted.sigBytes <= 0) {
-            throw new Error('Decryption failed - invalid password or corrupted data');
+
+        // Convert to string and validate base64
+        const base64 = decrypted.toString(enc.Utf8);
+        if (!base64) {
+            throw new Error('Invalid decryption');
         }
 
-        // Convert WordArray to Uint8Array
-        const words = decrypted.words;
-        const sigBytes = decrypted.sigBytes;
-        const result = new Uint8Array(sigBytes);
-        
-        for (let i = 0; i < sigBytes; i++) {
-            result[i] = (words[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff;
-        }
-        
-        return result;
+        // Convert back to Uint8Array
+        return new Uint8Array(Buffer.from(base64, 'base64'));
     } catch (error) {
-        throw new Error('Decryption failed - invalid password or corrupted data');
+        throw new Error('Failed to decrypt - invalid password');
     }
 } 

@@ -1,4 +1,6 @@
 import { Account } from './account';
+import { EncryptedData } from '../crypto/encryption';
+import { AccountData } from './account';
 
 export interface Signature {
     signature: Uint8Array;
@@ -27,4 +29,11 @@ export interface HDWallet {
     lock(): void;
     unlock(password: string): Promise<void>;
     changePassword(oldPassword: string, newPassword: string): Promise<void>;
+}
+
+export interface WalletExport {
+    version: string;
+    timestamp: number;
+    encrypted: EncryptedData;
+    accounts: AccountData[];
 } 

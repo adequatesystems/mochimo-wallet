@@ -1,148 +1,236 @@
-import { HDWallet, Account, Signature, WalletStorage } from '../types';
+import { MasterSeed } from './MasterSeed';
+import { Transaction } from 'mochimo-wots-v2';
+import { WOTSWallet } from 'mochimo-wots-v2';
+import { Account, AccountData } from '../types/account';
+import { Storage } from '../types/storage';
+import { WalletExport } from '../types/wallet';
 
-export class HDWalletImpl implements HDWallet {
-    private masterSeed?: Uint8Array;
-    private storage: WalletStorage;
-    private isLocked: boolean = true;
-    private currentAccountIndex: number = 0;
+export interface HDWalletOptions {
+    storage?: Storage;
+}
 
-    constructor() {
-        this.storage = {
-            encryptedMasterSeed: {
-                data: '',
-                iv: '',
-                salt: ''
-            },
-            accounts: {},
-            currentAccount: 0,
-            version: '1.0.0'
-        };
+export interface TransactionOptions {
+    fee?: bigint;
+    name?: string;  // Optional name for the WOTS wallet
+}
+
+export class HDWallet {
+    private masterSeed?: MasterSeed;
+    private accounts: Map<string, Account> = new Map();
+    private storage?: Storage;
+
+    constructor(options: HDWalletOptions = {}) {
+        this.storage = options.storage;
     }
 
-    async create(password: string): Promise<void> {
-        if (!this.isLocked) {
-            throw new Error('Wallet already initialized');
-        }
-
-        // Generate master seed (32 bytes)
-        this.masterSeed = crypto.getRandomValues(new Uint8Array(32));
-        await this.encryptAndStoreMasterSeed(password);
-        this.isLocked = false;
-    }
-
-    async load(password: string): Promise<void> {
-        if (!this.isLocked) {
-            throw new Error('Wallet already unlocked');
-        }
-
-        await this.decryptMasterSeed(password);
-        this.isLocked = false;
-    }
-
-    async import(exportData: string, password: string): Promise<void> {
-        throw new Error('Not implemented');
-    }
-
-    async export(password: string): Promise<string> {
-        throw new Error('Not implemented');
-    }
-
-    async createAccount(name: string): Promise<Account> {
-        if (this.isLocked || !this.masterSeed) {
-            throw new Error('Wallet is locked');
-        }
-
-        const index = Object.keys(this.storage.accounts).length;
-        const tag = await this.generateAccountTag(index);
+    /**
+     * Creates a new HD wallet with a fresh master seed
+     */
+    static async create(password: string, options?: HDWalletOptions): Promise<HDWallet> {
+        const wallet = new HDWallet(options);
+        wallet.masterSeed = await MasterSeed.create();
         
-        const account: Account = {
-            index,
+        // Encrypt and store if storage is provided
+        if (wallet.storage) {
+            const encrypted = await wallet.masterSeed.export(password);
+            await wallet.storage.saveMasterSeed(encrypted);
+        }
+        
+        return wallet;
+    }
+
+    /**
+     * Loads an existing HD wallet from storage
+     */
+    static async load(password: string, storage: Storage): Promise<HDWallet> {
+        const encrypted = await storage.loadMasterSeed();
+        if (!encrypted) {
+            throw new Error('No wallet found in storage');
+        }
+
+        try {
+            const wallet = new HDWallet({ storage });
+            wallet.masterSeed = await MasterSeed.import(encrypted, password);
+            
+            // Load accounts from storage
+            const accounts = await storage.loadAccounts();
+            for (const accountData of accounts) {
+                wallet.accounts.set(accountData.tag, new Account(accountData));
+            }
+            
+            return wallet;
+        } catch (error) {
+            throw new Error('Failed to load wallet - invalid password');
+        }
+    }
+
+    /**
+     * Creates a new account
+     */
+    async createAccount(name: string): Promise<Account> {
+        if (!this.masterSeed) throw new Error('Wallet is locked');
+
+        // Find next available account index
+        const accountIndex = this.accounts.size;
+        
+        // Derive account tag for identification
+        const tag = await this.masterSeed.deriveAccountTag(accountIndex);
+        const tagString = Buffer.from(tag).toString('base64');
+        
+        // Create account data
+        const accountData: AccountData = {
             name,
-            wotsIndex: 0,
-            tag,
-            lastUsed: Date.now(),
-            publicKey: new Uint8Array(0) // Will be set when generating first key pair
+            index: accountIndex,
+            tag: tagString,
+            nextWotsIndex: 0
         };
 
-        this.storage.accounts[index] = {
-            name: account.name,
-            wotsIndex: account.wotsIndex,
-            tag: Buffer.from(account.tag).toString('base64'),
-            lastUsed: account.lastUsed
-        };
-
+        // Create and store account
+        const account = new Account(accountData);
+        this.accounts.set(tagString, account);
+        
+        // Save to storage if available
+        if (this.storage) {
+            await this.storage.saveAccount(accountData);
+        }
+        
         return account;
     }
 
-    getAccounts(): Array<Account> {
-        return Object.entries(this.storage.accounts).map(([index, data]) => ({
-            index: parseInt(index),
-            name: data.name,
-            wotsIndex: data.wotsIndex,
-            tag: Buffer.from(data.tag, 'base64'),
-            lastUsed: data.lastUsed,
-            publicKey: new Uint8Array(0) // Will be regenerated when needed
-        }));
-    }
+    /**
+     * Creates a new WOTS wallet for an account
+     */
+    async createWOTSWallet(account: Account): Promise<WOTSWallet> {
+        if (!this.masterSeed) throw new Error('Wallet is locked');
 
-    setCurrentAccount(index: number): void {
-        if (!this.storage.accounts[index]) {
-            throw new Error('Account not found');
+        const wotsIndex = account.nextWotsIndex++;
+        const wallet = await this.masterSeed.createWOTSWallet(
+            account.index,
+            wotsIndex,
+            `${account.name} - WOTS ${wotsIndex}`
+        );
+
+        // Update account in storage
+        if (this.storage) {
+            await this.storage.saveAccount(account.toJSON());
         }
-        this.currentAccountIndex = index;
-        this.storage.currentAccount = index;
+
+        return wallet;
     }
 
-    async sign(message: Uint8Array): Promise<Signature> {
-        throw new Error('Not implemented');
-    }
-
-    verify(message: Uint8Array, signature: Signature, publicKey: Uint8Array): boolean {
-        throw new Error('Not implemented');
-    }
-
-    getNextPublicKey(): Uint8Array {
-        throw new Error('Not implemented');
-    }
-
+    /**
+     * Locks the wallet by wiping the master seed from memory
+     */
     lock(): void {
+        this.masterSeed?.lock();
         this.masterSeed = undefined;
-        this.isLocked = true;
     }
 
-    async unlock(password: string): Promise<void> {
-        await this.load(password);
+    /**
+     * Gets all accounts in the wallet
+     */
+    getAccounts(): Account[] {
+        return Array.from(this.accounts.values());
     }
 
-    async changePassword(oldPassword: string, newPassword: string): Promise<void> {
-        if (this.isLocked) {
+    /**
+     * Gets an account by its tag
+     */
+    getAccount(tag: string): Account | undefined {
+        return this.accounts.get(tag);
+    }
+
+    /**
+     * Exports the wallet to a portable format
+     * @throws Error if the wallet is locked
+     */
+    async export(password: string): Promise<WalletExport> {
+        if (!this.masterSeed) {
             throw new Error('Wallet is locked');
         }
 
-        // Verify old password
-        const currentSeed = this.masterSeed;
-        await this.decryptMasterSeed(oldPassword);
-        
-        if (!this.masterSeed || !currentSeed || !this.masterSeed.every((b, i) => b === currentSeed[i])) {
-            throw new Error('Invalid password');
+        return {
+            version: '1.0.0',
+            timestamp: Date.now(),
+            encrypted: await this.masterSeed.export(password),
+            accounts: this.getAccounts().map(a => a.toJSON())
+        };
+    }
+
+    /**
+     * Creates a wallet from exported data
+     * @throws Error if the data is invalid or password is incorrect
+     */
+    static async import(data: WalletExport, password: string, options?: HDWalletOptions): Promise<HDWallet> {
+        // Validate version
+        if (!data.version.startsWith('1.')) {
+            throw new Error('Unsupported wallet version');
         }
 
-        // Encrypt with new password
-        await this.encryptAndStoreMasterSeed(newPassword);
+        try {
+            const wallet = new HDWallet(options);
+            wallet.masterSeed = await MasterSeed.import(data.encrypted, password);
+
+            // Import accounts
+            for (const accountData of data.accounts) {
+                wallet.accounts.set(accountData.tag, new Account(accountData));
+            }
+
+            // Save to storage if provided
+            if (wallet.storage) {
+                await wallet.storage.saveMasterSeed(data.encrypted);
+                for (const account of wallet.accounts.values()) {
+                    await wallet.storage.saveAccount(account.toJSON());
+                }
+            }
+
+            return wallet;
+        } catch (error) {
+            throw new Error('Failed to import wallet - invalid data or password');
+        }
     }
 
-    private async encryptAndStoreMasterSeed(password: string): Promise<void> {
-        // Implementation will go here
-        throw new Error('Not implemented');
-    }
+    /**
+     * Creates and signs a transaction
+     * @param account Source account
+     * @param destination Destination address (as Uint8Array)
+     * @param amount Amount to send
+     * @param options Transaction options
+     */
+    async createTransaction(
+        account: Account,
+        destination: Uint8Array,
+        amount: bigint,
+        options: TransactionOptions = {}
+    ): Promise<Transaction> {
+        if (!this.masterSeed) {
+            throw new Error('Wallet is locked');
+        }
 
-    private async decryptMasterSeed(password: string): Promise<void> {
-        // Implementation will go here
-        throw new Error('Not implemented');
-    }
+        // Create WOTS wallet for signing
+        const wots = await this.createWOTSWallet(account);
+        const sourceAddress = wots.getAddress();
+        const sourceSecret = wots.getSecret();
 
-    private async generateAccountTag(index: number): Promise<Uint8Array> {
-        // Implementation will go here
-        throw new Error('Not implemented');
+        // Default fee if not specified
+        const fee = options.fee || BigInt(1000);  // Example default fee
+        
+        // Create change address from next WOTS index
+        const changeWallet = await this.createWOTSWallet(account);
+        const changeAddress = changeWallet.getAddress();
+
+        // Sign the transaction
+        const { tx } = Transaction.sign(
+            amount + fee,  // Source balance (amount + fee)
+            amount,        // Payment amount
+            fee,          // Network fee
+            BigInt(0),    // Change amount
+            sourceAddress,
+            sourceSecret,
+            destination,
+            changeAddress
+        );
+
+        return Transaction.of(tx);
     }
 } 

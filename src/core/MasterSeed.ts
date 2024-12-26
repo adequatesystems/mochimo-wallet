@@ -92,10 +92,19 @@ export class MasterSeed {
      * Creates a MasterSeed instance from an encrypted seed
      */
     static async import(encrypted: EncryptedData, password: string): Promise<MasterSeed> {
-        const seed = await decrypt(encrypted, password);
-        const instance = new MasterSeed();
-        instance.seed = seed;
-        instance._isLocked = false;
-        return instance;
+        try {
+            const seed = await decrypt(encrypted, password);
+            // Validate seed length
+            if (seed.length !== 32) {
+                throw new Error('Invalid seed length');
+            }
+            
+            const instance = new MasterSeed();
+            instance.seed = seed;
+            instance._isLocked = false;
+            return instance;
+        } catch (error) {
+            throw new Error('Failed to decrypt master seed - invalid password');
+        }
     }
 } 
