@@ -126,4 +126,25 @@ export function useWalletError() {
         clearError,
         handleError
     }
+}
+
+export function useWalletInit() {
+    const { hasWallet, createWallet, loadWallet, isLoading } = useWallet()
+
+    const initializeWallet = useCallback(async (password: string) => {
+        // Check if wallet exists first
+        const exists = await hasWallet()
+        
+        if (exists) {
+            await loadWallet(password)
+        } else {
+            await createWallet(password)
+        }
+    }, [hasWallet, loadWallet, createWallet])
+
+    return {
+        hasWallet,
+        initializeWallet,
+        isLoading
+    }
 } 

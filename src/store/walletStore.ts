@@ -4,6 +4,7 @@ import { Account } from '../types/account'
 import { NetworkService } from '../types/network'
 import { ProxyNetworkService } from '@/network/proxyNetworkService'
 import { WalletExport } from '@/types/wallet'
+import { StorageFactory } from '../storage/StorageFactory'
 
 // Export the state interface
 export interface WalletState {
@@ -37,6 +38,9 @@ export interface WalletState {
     // Export/import actions
     exportWallet: (password: string) => Promise<WalletExport>
     importWallet: (data: WalletExport, password: string) => Promise<void>
+
+    // Wallet existence check
+    hasWallet: () => Promise<boolean>
 }
 
 // Create storage instance
@@ -243,6 +247,20 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
             throw error
         } finally {
             set({ isLoading: false })
+        }
+    },
+
+    hasWallet: async () => {
+        try {
+            // Try to load master seed from storage
+            const storage = StorageFactory.create()
+            const masterSeed = await storage.loadMasterSeed()
+            
+            // If masterSeed exists, wallet exists
+            return masterSeed !== null
+        } catch (error) {
+            console.error('Error checking wallet existence:', error)
+            return false
         }
     }
 })) 
