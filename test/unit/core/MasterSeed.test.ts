@@ -10,14 +10,14 @@ describe('MasterSeed', () => {
 
     describe('create', () => {
         it('should create an unlocked instance', () => {
-            expect(masterSeed.isLocked()).toBe(false);
+            expect(masterSeed.isLocked).toBe(false);
         });
     });
 
     describe('lock', () => {
         it('should lock the seed', async () => {
             masterSeed.lock();
-            expect(masterSeed.isLocked()).toBe(true);
+            expect(masterSeed.isLocked).toBe(true);
             
             // Should not be able to derive after locking
             await expect(masterSeed.deriveAccountSeed(0))

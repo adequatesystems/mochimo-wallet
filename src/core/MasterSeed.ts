@@ -1,6 +1,7 @@
 import { generateSeed, wipeBytes } from '../crypto/random';
 import { deriveAccountSeed, deriveAccountTag, createWOTSWallet } from '../crypto/kdf';
 import { WOTSWallet } from 'mochimo-wots-v2';
+import { encrypt, decrypt, EncryptedData } from '../crypto/encryption';
 
 export interface EncryptedSeed {
     data: string;      // Base64 encrypted seed
@@ -10,7 +11,7 @@ export interface EncryptedSeed {
 
 export class MasterSeed {
     private seed?: Uint8Array;
-    private isLocked: boolean = true;
+    private _isLocked: boolean = true;
 
     /**
      * Creates a new master seed
@@ -18,7 +19,7 @@ export class MasterSeed {
     static async create(): Promise<MasterSeed> {
         const instance = new MasterSeed();
         instance.seed = generateSeed();
-        instance.isLocked = false;
+        instance._isLocked = false;
         return instance;
     }
 
@@ -30,14 +31,14 @@ export class MasterSeed {
             wipeBytes(this.seed);
             this.seed = undefined;
         }
-        this.isLocked = true;
+        this._isLocked = true;
     }
 
     /**
      * Checks if the master seed is locked
      */
-    isLocked(): boolean {
-        return this.isLocked;
+    get isLocked(): boolean {
+        return this._isLocked;
     }
 
     /**
@@ -45,7 +46,7 @@ export class MasterSeed {
      * @throws Error if the master seed is locked
      */
     async deriveAccountSeed(accountIndex: number): Promise<Uint8Array> {
-        if (this.isLocked || !this.seed) {
+        if (this._isLocked || !this.seed) {
             throw new Error('Master seed is locked');
         }
         return deriveAccountSeed(this.seed, accountIndex);
@@ -56,7 +57,7 @@ export class MasterSeed {
      * @throws Error if the master seed is locked
      */
     async deriveAccountTag(accountIndex: number): Promise<Uint8Array> {
-        if (this.isLocked || !this.seed) {
+        if (this._isLocked || !this.seed) {
             throw new Error('Master seed is locked');
         }
         return deriveAccountTag(this.seed, accountIndex);
@@ -71,7 +72,7 @@ export class MasterSeed {
         wotsIndex: number,
         name?: string
     ): Promise<WOTSWallet> {
-        if (this.isLocked || !this.seed) {
+        if (this._isLocked || !this.seed) {
             throw new Error('Master seed is locked');
         }
         return createWOTSWallet(this.seed, accountIndex, wotsIndex, name);
@@ -79,21 +80,22 @@ export class MasterSeed {
 
     /**
      * Exports the master seed in encrypted form
-     * @throws Error if the master seed is locked
      */
-    async export(password: string): Promise<EncryptedSeed> {
-        if (this.isLocked || !this.seed) {
+    async export(password: string): Promise<EncryptedData> {
+        if (this._isLocked || !this.seed) {
             throw new Error('Master seed is locked');
         }
-        // TODO: Implement encryption
-        throw new Error('Not implemented');
+        return encrypt(this.seed, password);
     }
 
     /**
      * Creates a MasterSeed instance from an encrypted seed
      */
-    static async import(encrypted: EncryptedSeed, password: string): Promise<MasterSeed> {
-        // TODO: Implement decryption
-        throw new Error('Not implemented');
+    static async import(encrypted: EncryptedData, password: string): Promise<MasterSeed> {
+        const seed = await decrypt(encrypted, password);
+        const instance = new MasterSeed();
+        instance.seed = seed;
+        instance._isLocked = false;
+        return instance;
     }
 } 
