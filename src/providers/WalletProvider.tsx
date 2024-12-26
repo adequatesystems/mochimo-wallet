@@ -10,7 +10,7 @@ import type { WalletState } from '../store/walletStore'
 type WalletContextValue = WalletState
 
 // Create the context with proper type
-const WalletContext = createContext<WalletContextValue | null>(null)
+export const WalletContext = createContext<WalletContextValue | null>(null)
 
 // Type guard to check if context exists
 function assertContext(context: WalletContextValue | null): asserts context is WalletContextValue {

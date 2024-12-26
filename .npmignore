@@ -1,0 +1,14 @@
+# Source
+src/
+test/
+docs/
+
+# Development
+node_modules/
+coverage/
+.vscode/
+.idea/
+
+# Misc
+.DS_Store
+*.log 

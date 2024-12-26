@@ -14,37 +14,22 @@ export default defineConfig({
     lib: {
       entry: resolve(__dirname, 'src/index.ts'),
       name: 'MochimoWallet',
-      formats: ['es', 'umd'],
-      fileName: (format) => `index.${format}.js`,
+      formats: ['es', 'cjs'],
+      fileName: (format) => `index.${format === 'es' ? 'js' : 'cjs'}`
     },
     rollupOptions: {
-      external: [
-        'react',
-        'react-dom',
-        'mochimo-wots-v2',
-        'crypto-js'
-      ],
+      external: ['react', 'react-dom'],
       output: {
         globals: {
           react: 'React',
-          'react-dom': 'ReactDOM',
-          'mochimo-wots-v2': 'MochimoWOTS',
-          'crypto-js': 'CryptoJS'
-        },
-      },
-    },
-    sourcemap: true,
-    minify: 'esbuild'
+          'react-dom': 'ReactDOM'
+        }
+      }
+    }
   },
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'src')
+      '@': resolve(__dirname, './src')
     }
-  },
-  test: {
-    environment: 'jsdom',
-    coverage: {
-      reporter: ['text', 'json', 'html'],
-    },
-  },
-}); 
+  }
+}) 

@@ -1,7 +1,7 @@
 {
   "name": "mochimo-wallet",
   "version": "0.1.0",
-  "description": "HD Wallet implementation for Mochimo blockchain",
+  "description": "Mochimo HD Wallet Implementation with React Integration",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -13,6 +13,9 @@
       "types": "./dist/index.d.ts"
     }
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
@@ -21,36 +24,40 @@
     "test:ui": "vitest --ui",
     "lint": "eslint src --ext .ts,.tsx",
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
-    "prepare": "husky install"
-  },
-  "dependencies": {
-    "@scure/bip39": "^1.5.0",
-    "crypto-js": "^4.2.0",
-    "mochimo-wots-v2": "^0.1.2",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
-  },
-  "devDependencies": {
-    "@types/crypto-js": "^4.2.1",
-    "@types/node": "^20.0.0",
-    "@types/react": "^18.2.0",
-    "@types/react-dom": "^18.2.0",
-    "@typescript-eslint/eslint-plugin": "^6.0.0",
-    "@typescript-eslint/parser": "^6.0.0",
-    "@vitejs/plugin-react": "^4.0.0",
-    "eslint": "^8.0.0",
-    "eslint-config-prettier": "^9.0.0",
-    "eslint-plugin-react": "^7.33.0",
-    "husky": "^8.0.0",
-    "jsdom": "^25.0.1",
-    "prettier": "^3.0.0",
-    "typescript": "^5.0.0",
-    "vite": "^5.0.0",
-    "vite-plugin-dts": "^3.0.0",
-    "vitest": "^1.0.0"
+    "prepublishOnly": "npm run build"
   },
   "peerDependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react": ">=16.8.0",
+    "react-dom": ">=16.8.0"
+  },
+  "dependencies": {
+    "@scure/bip39": "^1.2.2",
+    "mochimo-wots-v2": "^0.2.0",
+    "zustand": "^4.5.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^4.0.0",
+    "vite": "^5.0.0",
+    "vite-plugin-dts": "^3.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0",
+    "@testing-library/react": "^14.0.0",
+    "@testing-library/react-hooks": "^8.0.0",
+    "eslint": "^8.0.0"
+  },
+  "keywords": [
+    "mochimo",
+    "wallet",
+    "cryptocurrency",
+    "blockchain",
+    "react"
+  ],
+  "author": "Mochimoto",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mochimo/wallet.git"
   }
 }
