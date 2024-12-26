@@ -1,2 +1,7 @@
+// Export types
 export * from './types';
-export * from './core/HDWallet'; 
+
+// Export core implementations
+export { HDWallet } from './core/HDWallet';
+export { Account } from './types/account';
+export { MasterSeed } from './core/MasterSeed';

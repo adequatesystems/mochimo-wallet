@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { HDWallet } from '../../../src/core/HDWallet';
 import { MockStorage } from '../../mocks/MockStorage';
 import { Transaction } from 'mochimo-wots-v2';
+import { Account } from '@/types/account';
 
 describe('HDWallet', () => {
     let storage: MockStorage;
@@ -186,7 +187,7 @@ describe('HDWallet', () => {
             // Create a destination address (normally from another wallet)
             const destWallet = await wallet.createAccount('Destination');
             const destWOTS = await wallet.createWOTSWallet(destWallet);
-            const destination = destWOTS.getAddress();
+            const destination = destWOTS.getAddress()!;
 
             // Create transaction
             const amount = BigInt(1000000);  // 0.001 MCM

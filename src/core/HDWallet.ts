@@ -217,6 +217,7 @@ export class HDWallet {
         
         // Create change address from next WOTS index
         const changeWallet = await this.createWOTSWallet(account);
+
         const changeAddress = changeWallet.getAddress();
 
         // Sign the transaction
@@ -225,10 +226,10 @@ export class HDWallet {
             amount,        // Payment amount
             fee,          // Network fee
             BigInt(0),    // Change amount
-            sourceAddress,
-            sourceSecret,
+            sourceAddress!,
+            sourceSecret!,
             destination,
-            changeAddress
+            changeAddress!
         );
 
         return Transaction.of(tx);

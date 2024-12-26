@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { WOTSWallet } from 'mochimo-wots-v2';
-import { deriveKey, deriveAccountSeed, deriveWotsSeed, deriveAccountTag, createWOTSWallet } from '../../../src/crypto/kdf';
+import { deriveKey, deriveAccountSeed, deriveWotsSeed, createWOTSWallet } from '../../../src/crypto/kdf';
 import { generateSeed } from '../../../src/crypto/random';
 
 describe('Key Derivation Functions', () => {

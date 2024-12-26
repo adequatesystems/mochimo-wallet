@@ -3,8 +3,15 @@ import { EncryptedData } from '../../src/crypto/encryption';
 import { AccountData } from '../../src/types/account';
 
 export class MockStorage implements Storage {
+
     private masterSeed?: EncryptedData;
     private accounts: AccountData[] = [];
+    
+    async clear(): Promise<void> {
+        this.masterSeed = undefined;
+        this.accounts = [];
+        return Promise.resolve();
+    }
 
     async saveMasterSeed(encrypted: EncryptedData): Promise<void> {
         this.masterSeed = encrypted;
