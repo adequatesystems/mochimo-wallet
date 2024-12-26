@@ -52,4 +52,39 @@ describe('MasterSeed', () => {
             expect(wallet1.getAddress()).not.toEqual(wallet2.getAddress());
         });
     });
+
+    describe('seed phrases', () => {
+        it('should create from valid seed phrase', async () => {
+            const phrase = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
+            const seed = await MasterSeed.fromPhrase(phrase);
+            expect(seed).toBeDefined();
+            expect(seed.isLocked).toBe(false);
+        });
+
+        it('should reject invalid seed phrase', async () => {
+            const phrase = 'invalid seed phrase';
+            await expect(MasterSeed.fromPhrase(phrase))
+                .rejects.toThrow('Invalid seed phrase');
+        });
+
+        it('should generate consistent accounts from phrase', async () => {
+            const phrase = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
+            const seed1 = await MasterSeed.fromPhrase(phrase);
+            const seed2 = await MasterSeed.fromPhrase(phrase);
+
+            const tag1 = await seed1.deriveAccountTag(0);
+            const tag2 = await seed2.deriveAccountTag(0);
+            expect(tag1).toEqual(tag2);
+        });
+
+        it('should export seed phrase', async () => {
+            // Create from known phrase
+            const phrase = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
+            const seed = await MasterSeed.fromPhrase(phrase);
+
+            // Export and verify
+            const exported = await seed.toPhrase();
+            expect(exported).toBe(phrase);
+        });
+    });
 }); 

@@ -241,4 +241,74 @@ describe('HDWallet', () => {
             expect(validation).toBeNull();  // Null means valid
         });
     });
+
+    describe('recovery', () => {
+        it('should recover wallet from seed phrase', async () => {
+            const seedPhrase = 'test test test test test test test test test test test junk';
+            const wallet = await HDWallet.recover(seedPhrase, 'password');
+            
+            expect(wallet).toBeDefined();
+            expect(wallet.getAccounts()).toHaveLength(0);
+        });
+
+        it('should scan for existing accounts', async () => {
+            const seedPhrase = 'test test test test test test test test test test test junk';
+            
+            // Mock account existence check
+            vi.spyOn(HDWallet.prototype as any, 'checkAccountExists')
+                .mockImplementation(async () => true);
+            
+            const wallet = await HDWallet.recover(seedPhrase, 'password', {
+                scanAccounts: true,
+                maxScan: 5
+            });
+            
+            expect(wallet.getAccounts()).toHaveLength(5);
+        });
+
+        it('should stop scanning when no more accounts found', async () => {
+            const seedPhrase = 'test test test test test test test test test test test junk';
+            
+            // Mock account existence check
+            let callCount = 0;
+            vi.spyOn(HDWallet.prototype as any, 'checkAccountExists')
+                .mockImplementation(async () => {
+                    callCount++;
+                    return callCount <= 3;  // Only first 3 accounts exist
+                });
+            
+            const wallet = await HDWallet.recover(seedPhrase, 'password', {
+                scanAccounts: true,
+                maxScan: 10
+            });
+            
+            expect(wallet.getAccounts()).toHaveLength(3);
+        });
+    });
+
+    describe('seed phrases', () => {
+        let wallet: HDWallet;
+        const password = 'test_password';
+        const phrase = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
+
+        beforeEach(async () => {
+            wallet = await HDWallet.recover(phrase, password);
+        });
+
+        it('should export seed phrase with correct password', async () => {
+            const exported = await wallet.exportSeedPhrase(password);
+            expect(exported).toBe(phrase);
+        });
+
+        it('should reject export with wrong password', async () => {
+            await expect(wallet.exportSeedPhrase('wrong'))
+                .rejects.toThrow('Failed to decrypt master seed');
+        });
+
+        it('should reject export when locked', async () => {
+            wallet.lock();
+            await expect(wallet.exportSeedPhrase(password))
+                .rejects.toThrow('Wallet is locked');
+        });
+    });
 }); 

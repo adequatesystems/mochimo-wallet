@@ -4,6 +4,7 @@ import { WOTSWallet } from 'mochimo-wots-v2';
 import { Account, AccountData } from '../types/account';
 import { Storage } from '../types/storage';
 import { WalletExport } from '../types/wallet';
+import { StorageFactory } from '../storage/StorageFactory';
 
 export interface HDWalletOptions {
     storage?: Storage;
@@ -12,6 +13,14 @@ export interface HDWalletOptions {
 export interface TransactionOptions {
     fee?: bigint;
     name?: string;  // Optional name for the WOTS wallet
+}
+
+/**
+ * Recovery options for importing from seed phrase
+ */
+export interface RecoveryOptions extends HDWalletOptions {
+    scanAccounts?: boolean;  // Whether to scan for used accounts
+    maxScan?: number;        // Maximum number of accounts to scan
 }
 
 export class HDWallet {
@@ -35,6 +44,7 @@ export class HDWallet {
             const encrypted = await wallet.masterSeed.export(password);
             await wallet.storage.saveMasterSeed(encrypted);
         }
+
         
         return wallet;
     }
@@ -233,5 +243,109 @@ export class HDWallet {
         );
 
         return Transaction.of(tx);
+    }
+
+    /**
+     * Creates a new HD wallet with automatic storage selection
+     */
+    static async createWithStorage(password: string, prefix?: string): Promise<HDWallet> {
+        const storage = StorageFactory.create(prefix);
+        return HDWallet.create(password, { storage });
+    }
+
+    /**
+     * Loads an existing wallet with automatic storage selection
+     */
+    static async loadWithStorage(password: string, prefix?: string): Promise<HDWallet> {
+        const storage = StorageFactory.create(prefix);
+        return HDWallet.load(password, storage);
+    }
+
+    /**
+     * Recovers a wallet from a seed phrase
+     */
+    static async recover(
+        seedPhrase: string, 
+        password: string,
+        options: RecoveryOptions = {}
+    ): Promise<HDWallet> {
+        // Create master seed from phrase
+        const masterSeed = await MasterSeed.fromPhrase(seedPhrase);
+        const wallet = new HDWallet(options);
+        wallet.masterSeed = masterSeed;
+
+        // Create initial encrypted seed for password verification
+        await masterSeed.export(password);
+
+        // Save encrypted master seed if storage provided
+        if (wallet.storage) {
+            const encrypted = await masterSeed.export(password);
+            await wallet.storage.saveMasterSeed(encrypted);
+        }
+
+        // Scan for used accounts if requested
+        if (options.scanAccounts) {
+            await wallet.scanAccounts(options.maxScan || 10);
+        }
+
+        return wallet;
+    }
+
+    /**
+     * Scans for used accounts
+     */
+    private async scanAccounts(maxScan: number): Promise<void> {
+        if (!this.masterSeed) throw new Error('Wallet is locked');
+
+        for (let i = 0; i < maxScan; i++) {
+            // Derive account tag
+            const tag = await this.masterSeed.deriveAccountTag(i);
+            const tagString = Buffer.from(tag).toString('base64');
+
+            // Check if account exists (implementation depends on blockchain)
+            const exists = await this.checkAccountExists(tagString);
+            if (!exists) break;
+
+            // Create and store account
+            const account = new Account({
+                name: `Account ${i + 1}`,
+                index: i,
+                tag: tagString,
+                nextWotsIndex: 0  // Will need to scan for used WOTS addresses
+            });
+
+            this.accounts.set(tagString, account);
+            
+            if (this.storage) {
+                await this.storage.saveAccount(account.toJSON());
+            }
+        }
+    }
+
+    /**
+     * Checks if an account exists on the blockchain
+     * This is a placeholder - actual implementation depends on blockchain API
+     */
+    private async checkAccountExists(tag: string): Promise<boolean> {
+        // TODO: Implement blockchain check
+        return false;
+    }
+
+    /**
+     * Exports the wallet's seed phrase
+     */
+    async exportSeedPhrase(password: string): Promise<string> {
+        if (!this.masterSeed) throw new Error('Wallet is locked');
+        
+        try {
+            // Verify password by attempting to export
+            await this.masterSeed.export(password);
+            
+            // If password is correct, return phrase
+            return this.masterSeed.toPhrase();
+        } catch (error) {
+            // Re-throw the original error from export
+            throw error;
+        }
     }
 } 

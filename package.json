@@ -24,6 +24,7 @@
     "prepare": "husky install"
   },
   "dependencies": {
+    "@scure/bip39": "^1.5.0",
     "crypto-js": "^4.2.0",
     "mochimo-wots-v2": "^0.1.2",
     "react": "^18.2.0",

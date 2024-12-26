@@ -3,6 +3,9 @@ import { deriveAccountSeed, deriveAccountTag, createWOTSWallet } from '../crypto
 import { WOTSWallet } from 'mochimo-wots-v2';
 import { encrypt, decrypt, EncryptedData } from '../crypto/encryption';
 
+import * as bip39 from '@scure/bip39';
+import { wordlist } from '@scure/bip39/wordlists/english';
+
 export interface EncryptedSeed {
     data: string;      // Base64 encrypted seed
     iv: string;        // Initialization vector
@@ -11,16 +14,75 @@ export interface EncryptedSeed {
 
 export class MasterSeed {
     private seed?: Uint8Array;
+    private entropy?: Uint8Array;  // Store original entropy for phrase generation
     private _isLocked: boolean = true;
+    private encryptedSeed?: EncryptedData;  // Store encrypted seed for password verification
+
+    private constructor(seed: Uint8Array, entropy?: Uint8Array) {
+        this.seed = seed;
+        this.entropy = entropy;
+        this._isLocked = false;
+    }
 
     /**
-     * Creates a new master seed
+     * Creates a new master seed with random entropy
      */
     static async create(): Promise<MasterSeed> {
-        const instance = new MasterSeed();
-        instance.seed = generateSeed();
-        instance._isLocked = false;
-        return instance;
+        const seed = generateSeed();
+        return new MasterSeed(seed);
+    }
+
+    /**
+     * Creates a master seed from a BIP39 mnemonic phrase
+     */
+    static async fromPhrase(phrase: string): Promise<MasterSeed> {
+        try {
+            // First validate the phrase
+            const isValid = bip39.validateMnemonic(phrase, wordlist);
+            if (!isValid) {
+                throw new Error('Invalid seed phrase');
+            }
+
+            // Convert phrase to entropy first
+            const entropy = bip39.mnemonicToEntropy(phrase, wordlist);
+            
+            // Then convert to seed
+            const seed = await bip39.mnemonicToSeed(phrase);
+            const masterSeed = new Uint8Array(seed.slice(0, 32));
+            
+            // Store both seed and original entropy
+            return new MasterSeed(masterSeed, entropy);
+        } catch (error) {
+            if (error instanceof Error && error.message === 'Invalid seed phrase') {
+                throw error;
+            }
+            console.error('Seed phrase error:', error);
+            throw new Error('Failed to create master seed from phrase');
+        }
+    }
+
+    /**
+     * Exports the seed phrase for this master seed
+     */
+    async toPhrase(): Promise<string> {
+        if (!this.seed) {
+            throw new Error('Master seed is locked / does not exist');
+        }
+        
+        try {
+            // If we have original entropy, use it
+            if (this.entropy) {
+                return bip39.entropyToMnemonic(this.entropy, wordlist);
+            }
+            
+            // Otherwise generate new entropy from seed
+            const entropy = new Uint8Array(32);
+            entropy.set(this.seed);
+            return bip39.entropyToMnemonic(entropy, wordlist);
+        } catch (error) {
+            console.error('Phrase generation error:', error);
+            throw new Error('Failed to generate seed phrase');
+        }
     }
 
     /**
@@ -30,6 +92,10 @@ export class MasterSeed {
         if (this.seed) {
             wipeBytes(this.seed);
             this.seed = undefined;
+        }
+        if (this.entropy) {
+            wipeBytes(this.entropy);
+            this.entropy = undefined;
         }
         this._isLocked = true;
     }
@@ -85,7 +151,20 @@ export class MasterSeed {
         if (this._isLocked || !this.seed) {
             throw new Error('Master seed is locked');
         }
-        return encrypt(this.seed, password);
+
+        // If we have stored encrypted seed, verify password first
+        if (this.encryptedSeed) {
+            try {
+                await decrypt(this.encryptedSeed, password);
+            } catch (error) {
+                throw new Error('Failed to decrypt master seed - invalid password');
+            }
+        }
+
+        // Create new encrypted seed if needed
+        const encrypted = await encrypt(this.seed, password);
+        this.encryptedSeed = encrypted;  // Store for future verification
+        return encrypted;
     }
 
     /**
@@ -99,8 +178,7 @@ export class MasterSeed {
                 throw new Error('Invalid seed length');
             }
             
-            const instance = new MasterSeed();
-            instance.seed = seed;
+            const instance = new MasterSeed(seed);
             instance._isLocked = false;
             return instance;
         } catch (error) {

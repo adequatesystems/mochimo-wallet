@@ -8,7 +8,7 @@ export default defineConfig({
         setupFiles: ['test/setup.ts'],
         server: {
             deps: {
-                inline: [/mochimo-wots-v2/]
+                inline: [/mochimo-wots-v2/, /@scure\/bip39/]
             }
         }
     }
