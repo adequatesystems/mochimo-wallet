@@ -7,6 +7,8 @@ export interface Storage {
     saveAccount(account: AccountData): Promise<void>;
     loadAccounts(): Promise<AccountData[]>;
     clear(): Promise<void>;
+    saveActiveAccount(account: AccountData): Promise<void>;
+    loadActiveAccount(): Promise<AccountData | null>;
 }
 
 // Extension storage types

@@ -5,3 +5,4 @@ export * from './types';
 export { HDWallet } from './core/HDWallet';
 export { Account } from './types/account';
 export { MasterSeed } from './core/MasterSeed';
+export {}

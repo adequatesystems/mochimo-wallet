@@ -26,7 +26,7 @@ export interface RecoveryOptions extends HDWalletOptions {
 export class HDWallet {
     private masterSeed?: MasterSeed;
     private accounts: Map<string, Account> = new Map();
-    private storage?: Storage;
+    public storage?: Storage;
 
     constructor(options: HDWalletOptions = {}) {
         this.storage = options.storage;
@@ -38,14 +38,14 @@ export class HDWallet {
     static async create(password: string, options?: HDWalletOptions): Promise<HDWallet> {
         const wallet = new HDWallet(options);
         wallet.masterSeed = await MasterSeed.create();
-        
+
         // Encrypt and store if storage is provided
         if (wallet.storage) {
             const encrypted = await wallet.masterSeed.export(password);
             await wallet.storage.saveMasterSeed(encrypted);
         }
 
-        
+
         return wallet;
     }
 
@@ -61,14 +61,14 @@ export class HDWallet {
         try {
             const wallet = new HDWallet({ storage });
             wallet.masterSeed = await MasterSeed.import(encrypted, password);
-            
+
             // Load accounts from storage
             const accounts = await storage.loadAccounts();
             for (const accountData of accounts) {
                 wallet.accounts.set(accountData.tag, new Account(accountData));
             }
-            
             return wallet;
+
         } catch (error) {
             throw new Error('Failed to load wallet - invalid password');
         }
@@ -82,11 +82,11 @@ export class HDWallet {
 
         // Find next available account index
         const accountIndex = this.accounts.size;
-        
+
         // Derive account tag for identification
         const tag = await this.masterSeed.deriveAccountTag(accountIndex);
         const tagString = Buffer.from(tag).toString('base64');
-        
+
         // Create account data
         const accountData: AccountData = {
             name,
@@ -98,12 +98,12 @@ export class HDWallet {
         // Create and store account
         const account = new Account(accountData);
         this.accounts.set(tagString, account);
-        
+
         // Save to storage if available
         if (this.storage) {
             await this.storage.saveAccount(accountData);
         }
-        
+
         return account;
     }
 
@@ -212,7 +212,7 @@ export class HDWallet {
         destination: Uint8Array,
         amount: bigint,
         options: TransactionOptions = {}
-    ): Promise<Transaction> {
+    ): Promise<{ tx: Uint8Array, datagram: Uint8Array }> {
         if (!this.masterSeed) {
             throw new Error('Wallet is locked');
         }
@@ -224,14 +224,14 @@ export class HDWallet {
 
         // Default fee if not specified
         const fee = options.fee || BigInt(1000);  // Example default fee
-        
+
         // Create change address from next WOTS index
         const changeWallet = await this.createWOTSWallet(account);
 
         const changeAddress = changeWallet.getAddress();
 
         // Sign the transaction
-        const { tx } = Transaction.sign(
+        const { tx, datagram } = Transaction.sign(
             amount + fee,  // Source balance (amount + fee)
             amount,        // Payment amount
             fee,          // Network fee
@@ -242,7 +242,7 @@ export class HDWallet {
             changeAddress!
         );
 
-        return Transaction.of(tx);
+        return { tx, datagram: datagram };
     }
 
     /**
@@ -265,7 +265,7 @@ export class HDWallet {
      * Recovers a wallet from a seed phrase
      */
     static async recover(
-        seedPhrase: string, 
+        seedPhrase: string,
         password: string,
         options: RecoveryOptions = {}
     ): Promise<HDWallet> {
@@ -315,7 +315,7 @@ export class HDWallet {
             });
 
             this.accounts.set(tagString, account);
-            
+
             if (this.storage) {
                 await this.storage.saveAccount(account.toJSON());
             }
@@ -336,11 +336,11 @@ export class HDWallet {
      */
     async exportSeedPhrase(password: string): Promise<string> {
         if (!this.masterSeed) throw new Error('Wallet is locked');
-        
+
         try {
             // Verify password by attempting to export
             await this.masterSeed.export(password);
-            
+
             // If password is correct, return phrase
             return this.masterSeed.toPhrase();
         } catch (error) {

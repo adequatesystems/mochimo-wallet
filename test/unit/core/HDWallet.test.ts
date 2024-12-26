@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { HDWallet } from '../../../src/core/HDWallet';
 import { MockStorage } from '../../mocks/MockStorage';
 import { Transaction } from 'mochimo-wots-v2';
@@ -78,6 +78,48 @@ describe('HDWallet', () => {
             await wallet.createWOTSWallet(account);
             
             expect(account.nextWotsIndex).toBe(2);
+        });
+
+        describe('active account', () => {
+            let wallet: HDWallet;
+            let storage: MockStorage;
+
+            beforeEach(async () => {
+                storage = new MockStorage();
+                wallet = await HDWallet.create('password', { storage });
+            });
+
+            it('should save active account', async () => {
+                const account = await wallet.createAccount('Test Account');
+                await storage.saveActiveAccount(account.toJSON());
+
+                const loaded = await storage.loadActiveAccount();
+                expect(loaded).toBeDefined();
+                expect(loaded?.tag).toBe(account.tag);
+            });
+
+            it('should load active account after wallet creation', async () => {
+                // Create account and set as active
+                const account = await wallet.createAccount('Test Account');
+                await storage.saveActiveAccount(account.toJSON());
+
+                // Create new wallet instance
+                const newWallet = await HDWallet.load('password', storage);
+                expect(newWallet).toBeDefined();
+                const activeAccount = await storage.loadActiveAccount();
+
+                expect(activeAccount).toBeDefined();
+                expect(activeAccount?.tag).toBe(account.tag);
+            });
+
+            it('should clear active account on wallet lock', async () => {
+                const account = await wallet.createAccount('Test Account');
+                await storage.saveActiveAccount(account.toJSON());
+
+                wallet.lock();
+                const activeAccount = await storage.loadActiveAccount();
+                expect(activeAccount).toBeDefined();  // Active account persists in storage
+            });
         });
     });
 
@@ -191,15 +233,15 @@ describe('HDWallet', () => {
 
             // Create transaction
             const amount = BigInt(1000000);  // 0.001 MCM
-            const tx = await wallet.createTransaction(account, destination, amount);
-
+            const {tx} = await wallet.createTransaction(account, destination, amount);
+            const txObj = Transaction.of(tx)
             // Verify transaction
             expect(tx).toBeDefined();
-            expect(tx.totalSend).toBe(amount);
-            expect(tx.destinationAddressHex).toBe(Buffer.from(destination).toString('hex'));
+            expect(txObj.totalSend).toBe(amount);
+            expect(txObj.destinationAddressHex).toBe(Buffer.from(destination).toString('hex'));
             
             // Verify signature
-            const isValid = Transaction.isValidWOTSSignature(tx.serialize());
+            const isValid = Transaction.isValidWOTSSignature(txObj.serialize());
             expect(isValid).toBe(true);
         });
 
@@ -208,8 +250,9 @@ describe('HDWallet', () => {
             const amount = BigInt(1000000);
             const fee = BigInt(2000);
 
-            const tx = await wallet.createTransaction(account, destination, amount, { fee });
-            expect(tx.fee).toBe(fee);
+            const {tx} = await wallet.createTransaction(account, destination, amount, { fee });
+            const txObj = Transaction.of(tx)
+            expect(txObj.fee).toBe(fee);
         });
 
         it('should fail when locked', async () => {
@@ -236,8 +279,9 @@ describe('HDWallet', () => {
             const destination = new Uint8Array(2208);
             const amount = BigInt(1000000);
 
-            const tx = await wallet.createTransaction(account, destination, amount);
-            const validation = Transaction.validate(tx, BigInt(1000));
+            const {tx} = await wallet.createTransaction(account, destination, amount);
+            const txObj = Transaction.of(tx)
+            const validation = Transaction.validate(txObj, BigInt(1000));
             expect(validation).toBeNull();  // Null means valid
         });
     });

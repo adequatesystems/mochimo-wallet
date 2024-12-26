@@ -100,7 +100,8 @@ describe('ExtensionStorage', () => {
 
             expect(mockStorage.sync.remove).toHaveBeenCalledWith([
                 'test_master_seed',
-                'test_accounts'
+                'test_accounts',
+                'test_active_account'
             ]);
         });
     });

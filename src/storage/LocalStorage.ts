@@ -42,11 +42,24 @@ export class LocalStorage implements Storage {
         return data ? JSON.parse(data) : [];
     }
 
+    async saveActiveAccount(account: AccountData): Promise<void> {
+        localStorage.setItem(
+            `${this.prefix}active_account`,
+            JSON.stringify(account)
+        );
+    }
+
+    async loadActiveAccount(): Promise<AccountData | null> {
+        const data = localStorage.getItem(`${this.prefix}active_account`);
+        return data ? JSON.parse(data) : null;
+    }
+
     /**
      * Clears all wallet data from storage
      */
     async clear(): Promise<void> {
         localStorage.removeItem(`${this.prefix}master_seed`);
         localStorage.removeItem(`${this.prefix}accounts`);
+        localStorage.removeItem(`${this.prefix}active_account`);
     }
 } 

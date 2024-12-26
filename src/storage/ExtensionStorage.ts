@@ -6,6 +6,9 @@ import type { StorageArea } from '../types/storage';
 export class ExtensionStorage implements Storage {
     private readonly prefix: string;
     private storage: StorageArea;
+    private readonly MASTER_SEED_KEY = 'master_seed';
+    private readonly ACCOUNTS_KEY = 'accounts';
+    private readonly ACTIVE_ACCOUNT_KEY = 'active_account';
 
     constructor(prefix = 'mochimo_wallet_') {
         this.prefix = prefix;
@@ -57,10 +60,22 @@ export class ExtensionStorage implements Storage {
         return result[this.getKey('accounts')] || [];
     }
 
+    async saveActiveAccount(account: AccountData): Promise<void> {
+        await chrome.storage.local.set({
+            [this.ACTIVE_ACCOUNT_KEY]: account
+        });
+    }
+
+    async loadActiveAccount(): Promise<AccountData | null> {
+        const result = await chrome.storage.local.get(this.ACTIVE_ACCOUNT_KEY);
+        return result[this.ACTIVE_ACCOUNT_KEY] || null;
+    }
+
     async clear(): Promise<void> {
         await this.storage.remove([
-            this.getKey('master_seed'),
-            this.getKey('accounts')
+            this.getKey(this.MASTER_SEED_KEY),
+            this.getKey(this.ACCOUNTS_KEY),
+            this.getKey(this.ACTIVE_ACCOUNT_KEY)
         ]);
     }
 } 

@@ -1,7 +1,7 @@
-import { describe, it, expect, vi } from 'vitest';
-import { StorageFactory } from '../../../src/storage/StorageFactory';
-import { LocalStorage } from '../../../src/storage/LocalStorage';
+import { describe, expect, it } from 'vitest';
 import { ExtensionStorage } from '../../../src/storage/ExtensionStorage';
+import { LocalStorage } from '../../../src/storage/LocalStorage';
+import { StorageFactory } from '../../../src/storage/StorageFactory';
 
 describe('StorageFactory', () => {
     it('should create ExtensionStorage in extension environment', () => {
