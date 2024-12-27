@@ -28,7 +28,7 @@ export async function deriveKey(
 ): Promise<Uint8Array> {
     const encoder = new TextEncoder();
     const indexBytes = encoder.encode(index.toString());
-    
+
     // Combine master seed and index
     const input = new Uint8Array(masterSeed.length + indexBytes.length);
     input.set(masterSeed);
@@ -36,17 +36,17 @@ export async function deriveKey(
 
     try {
         let key = input;
-        
+
         // Perform PBKDF2-like key derivation using HMAC-SHA256
         for (let i = 0; i < (params.iterations || DEFAULT_ITERATIONS); i++) {
             key = hmacSHA256(key, params.salt);
         }
-        
+
         // If requested key length is different from hash output, adjust
         if (params.keyLength && params.keyLength !== key.length) {
             key = key.slice(0, params.keyLength);
         }
-        
+
         return key;
     } finally {
         wipeBytes(input);
@@ -86,23 +86,34 @@ export async function deriveWotsSeed(
     });
 }
 
+const BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+
 /**
  * Derives an account tag from master seed and account index
- * @param masterSeed The master seed
- * @param accountIndex The account index
- * @returns Promise<Uint8Array> The derived account tag (12 bytes)
+ * Generates a 12-byte tag that will be alphanumeric when converted to hex
  */
 export async function deriveAccountTag(
     masterSeed: Uint8Array,
     accountIndex: number
 ): Promise<Uint8Array> {
     const salt = new TextEncoder().encode(`tag_${accountIndex}`);
-    const tagKey = await deriveKey(masterSeed, accountIndex, {
+    
+    // Generate initial key
+    const initialKey = await deriveKey(masterSeed, accountIndex, {
         salt,
-        keyLength: 12,  // Tags are 12 bytes
-        iterations: 10000  // Fewer iterations for tags
+        keyLength: 32,
+        iterations: 10000
     });
-    return tagKey;
+
+    // Create 12-byte tag using base32 character set
+    const tag = new Uint8Array(12);
+    for (let i = 0; i < 12; i++) {
+        // Map each byte to the BASE32_ALPHABET
+        const index = initialKey[i] % BASE32_ALPHABET.length;
+        tag[i] = BASE32_ALPHABET.charCodeAt(index);
+    }
+
+    return tag;
 }
 
 /**
@@ -122,7 +133,7 @@ export async function createWOTSWallet(
     const tag = await deriveAccountTag(masterSeed, accountIndex);
     const wotsSeed = await deriveWotsSeed(seed, wotsIndex);
 
-    
+
     try {
         return WOTSWallet.create(name, wotsSeed, tag);
     } finally {
