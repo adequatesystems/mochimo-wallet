@@ -181,12 +181,16 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
             throw new Error('No wallet or active account')
         }
 
+        const tagResolve = await networkService.resolveTag(activeAccount.tag)
+        const balance = BigInt(tagResolve.balanceConsensus)
+
         set({ isLoading: true, error: null })
         try {
             const tx = await wallet.createTransaction(
                 activeAccount,
                 Buffer.from(destination, 'hex'),
-                amount
+                amount,
+                balance
             )
             await networkService.pushTransaction(Buffer.from(tx.datagram).toString('base64'))
         } catch (error) {
