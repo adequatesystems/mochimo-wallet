@@ -85,7 +85,7 @@ export class HDWallet {
 
         // Derive account tag for identification
         const tag = await this.masterSeed.deriveAccountTag(accountIndex);
-        const tagString = Buffer.from(tag).toString('base64');
+        const tagString = Buffer.from(tag).toString('hex');
 
         // Create account data
         const accountData: AccountData = {

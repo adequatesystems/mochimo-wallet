@@ -1,7 +1,7 @@
 export interface AccountData {
     name: string;
     index: number;
-    tag: string;  // Base64 encoded tag
+    tag: string;  // hex tag
     nextWotsIndex: number;
 }
 
