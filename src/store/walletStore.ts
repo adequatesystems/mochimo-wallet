@@ -17,8 +17,8 @@ export interface WalletState {
     networkService: NetworkService
 
     // Wallet Actions
-    createWallet: (password: string) => Promise<void>
-    loadWallet: (password: string) => Promise<boolean>
+    createWallet: (password: string) => Promise<HDWallet | undefined>
+    loadWallet: (password: string) => Promise<HDWallet | undefined>
     lockWallet: () => void
     recoverWallet: (seedPhrase: string, password: string) => Promise<void>
     exportSeedPhrase: (password: string) => Promise<string>
@@ -62,6 +62,7 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
     // Wallet management
     createWallet: async (password) => {
         set({ isLoading: true, error: null })
+        let w = undefined
         try {
             // Use storage directly in HDWallet
             const wallet = await HDWallet.createWithStorage(password)
@@ -73,17 +74,19 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
             }
 
             set({ wallet, isLocked: false })
+            w = wallet
         } catch (error) {
             set({ error: error as Error })
             throw error
         } finally {
             set({ isLoading: false })
         }
+        return w
     },
 
     loadWallet: async (password) => {
         set({ isLoading: true, error: null })
-        let success = false
+        let w = undefined
         try {
             // Load wallet with our storage
             const wallet = await HDWallet.loadWithStorage(password)
@@ -95,13 +98,13 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
                 : null
 
             set({ wallet, activeAccount, isLocked: false })
-            success = true
+            w = wallet
         } catch (error) {
             set({ error: error as Error })
         } finally {
             set({ isLoading: false })
         }
-        return success
+        return w
     },
 
     lockWallet: () => {
