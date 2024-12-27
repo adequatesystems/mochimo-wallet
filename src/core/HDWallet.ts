@@ -127,6 +127,21 @@ export class HDWallet {
 
         return wallet;
     }
+    async deriveWotsIndexFromWotsAddress(accountIndex: number, wotsAddress: Uint8Array): Promise<number> {
+        if (!this.masterSeed) throw new Error('Wallet is locked');
+        const tag = await this.masterSeed.deriveAccountTag(accountIndex);
+        const tagString = Buffer.from(tag).toString('hex');
+        let ret: number = -1
+        for(let i = 0; i < 1000000; i++) {
+      
+            const wots = await this.masterSeed.createWOTSWallet(accountIndex, i, `${tagString} - WOTS ${i}`);
+            if(wots.getAddress() === wotsAddress) {
+                ret = i;
+                break;
+            }
+        }
+        return ret;
+    }
 
     /**
      * Locks the wallet by wiping the master seed from memory
