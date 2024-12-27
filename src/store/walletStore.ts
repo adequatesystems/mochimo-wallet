@@ -29,7 +29,7 @@ export interface WalletState {
     getAccounts: () => Account[]
 
     // Transaction Actions
-    sendTransaction: (destination: string, amount: bigint) => Promise<void>
+    sendTransaction: (destination: string, amount: bigint) => Promise<any>
     activateTag: (tag: string) => Promise<void>
 
     // Error handling
@@ -183,7 +183,7 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
 
         const tagResolve = await networkService.resolveTag(activeAccount.tag)
         const balance = BigInt(tagResolve.balanceConsensus)
-
+        let result = undefined
         set({ isLoading: true, error: null })
         try {
             const tx = await wallet.createTransaction(
@@ -192,13 +192,14 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
                 amount,
                 balance
             )
-            await networkService.pushTransaction(Buffer.from(tx.datagram).toString('base64'))
+            result = await networkService.pushTransaction(Buffer.from(tx.datagram).toString('base64'))
         } catch (error) {
             set({ error: error as Error })
             throw error
         } finally {
             set({ isLoading: false })
         }
+        return result;
     },
 
     activateTag: async () => {
