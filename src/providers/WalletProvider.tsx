@@ -150,7 +150,7 @@ export function useWalletInit() {
 }
 
 export function useWOTS() {
-    const { getCurrentWOTSAddress, activateTag } = useWallet()
+    const { getCurrentWOTSAddress, activateTag, wallet, setActiveAccount } = useWallet()
     const { activeAccount } = useAccounts()
 
     const getAddress = useCallback(async (account?: Account) => {
@@ -165,9 +165,27 @@ export function useWOTS() {
         await activateTag(address)
     }, [activeAccount, getCurrentWOTSAddress, activateTag])
 
+    const updateWotsIndex = useCallback(async (newIndex: number, account?: Account) => {
+        if (!wallet) throw new Error('No wallet loaded')
+        const targetAccount = account || activeAccount
+        if (!targetAccount) throw new Error('No account specified')
+
+        // Update the account's WOTS index
+        targetAccount.wotsIndex = newIndex
+
+        // Save the updated account
+        await wallet.storage?.saveAccount(targetAccount.toJSON())
+
+        // If this is the active account, update it in the store
+        if (targetAccount === activeAccount) {
+            setActiveAccount(targetAccount)
+        }
+    }, [wallet, activeAccount, setActiveAccount])
+
     return {
         getAddress,
         activate,
-        activeAccount
+        activeAccount,
+        updateWotsIndex
     }
 } 
