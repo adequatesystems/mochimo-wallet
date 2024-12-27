@@ -183,12 +183,16 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
 
         const tagResolve = await networkService.resolveTag(activeAccount.tag)
         const balance = BigInt(tagResolve.balanceConsensus)
+
+        const destTagResolve = await networkService.resolveTag(destination)
+        const destAddress = (destTagResolve.addressConsensus)
+
         let result = undefined
         set({ isLoading: true, error: null })
         try {
             const tx = await wallet.createTransaction(
                 activeAccount,
-                Buffer.from(destination, 'hex'),
+                Buffer.from(destAddress, 'hex'),
                 amount,
                 balance
             )

@@ -203,7 +203,7 @@ export class HDWallet {
     /**
      * Creates and signs a transaction
      * @param account Source account
-     * @param destination Destination address (as Uint8Array)
+     * @param destination Destination tag (as Uint8Array)
      * @param amount Amount to send
      * @param options Transaction options
      */
