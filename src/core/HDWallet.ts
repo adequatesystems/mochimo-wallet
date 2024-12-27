@@ -211,6 +211,7 @@ export class HDWallet {
         account: Account,
         destination: Uint8Array,
         amount: bigint,
+        balance: bigint = BigInt(0),
         options: TransactionOptions = {}
     ): Promise<{ tx: Uint8Array, datagram: Uint8Array }> {
         if (!this.masterSeed) {
@@ -223,19 +224,19 @@ export class HDWallet {
         const sourceSecret = wots.getSecret();
 
         // Default fee if not specified
-        const fee = options.fee || BigInt(1000);  // Example default fee
+        const fee = options.fee || BigInt(500);  // Example default fee
 
         // Create change address from next WOTS index
         const changeWallet = await this.createWOTSWallet(account);
 
         const changeAddress = changeWallet.getAddress();
-
+        const changeAmount = balance - amount - fee;
         // Sign the transaction
         const { tx, datagram } = Transaction.sign(
-            amount + fee,  // Source balance (amount + fee)
+            balance,  // Source balance (amount + fee)
             amount,        // Payment amount
             fee,          // Network fee
-            BigInt(0),    // Change amount
+            changeAmount, // Change amount
             sourceAddress!,
             sourceSecret!,
             destination,
