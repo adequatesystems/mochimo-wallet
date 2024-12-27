@@ -18,7 +18,7 @@ export interface WalletState {
 
     // Wallet Actions
     createWallet: (password: string) => Promise<void>
-    loadWallet: (password: string) => Promise<void>
+    loadWallet: (password: string) => Promise<boolean>
     lockWallet: () => void
     recoverWallet: (seedPhrase: string, password: string) => Promise<void>
     exportSeedPhrase: (password: string) => Promise<string>
@@ -83,6 +83,7 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
 
     loadWallet: async (password) => {
         set({ isLoading: true, error: null })
+        let success = false
         try {
             // Load wallet with our storage
             const wallet = await HDWallet.loadWithStorage(password)
@@ -94,11 +95,13 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
                 : null
 
             set({ wallet, activeAccount, isLocked: false })
+            success = true
         } catch (error) {
             set({ error: error as Error })
         } finally {
             set({ isLoading: false })
         }
+        return success
     },
 
     lockWallet: () => {
