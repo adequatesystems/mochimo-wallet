@@ -112,7 +112,7 @@ export async function deriveAccountTag(
         const index = initialKey[i] % BASE32_ALPHABET.length;
         tag[i] = BASE32_ALPHABET.charCodeAt(index);
     }
-
+    console.log('generated tag', tag, Buffer.from(tag).toString('hex'))
     return tag;
 }
 

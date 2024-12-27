@@ -48,7 +48,7 @@ export interface WalletState {
 
 // Create storage instance
 
-const networkService = new ProxyNetworkService("http://localhost:9001")
+const networkService = new ProxyNetworkService("http://localhost:9000/api")
 
 export const useWalletStore = create<WalletState>()((set, get) => ({
     // Initial state
