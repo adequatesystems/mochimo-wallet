@@ -110,10 +110,10 @@ export class HDWallet {
     /**
      * Creates a new WOTS wallet for an account
      */
-    async createWOTSWallet(account: Account): Promise<WOTSWallet> {
+    async createWOTSWallet(account: Account, options: {increment?: boolean} = {increment: true} ): Promise<WOTSWallet> {
         if (!this.masterSeed) throw new Error('Wallet is locked');
 
-        const wotsIndex = account.nextWotsIndex++;
+        const wotsIndex = options.increment ? account.nextWotsIndex++ : account.nextWotsIndex;
         const wallet = await this.masterSeed.createWOTSWallet(
             account.index,
             wotsIndex,

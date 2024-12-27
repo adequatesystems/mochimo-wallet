@@ -147,4 +147,27 @@ export function useWalletInit() {
         initializeWallet,
         isLoading
     }
+}
+
+export function useWOTS() {
+    const { getCurrentWOTSAddress, activateTag } = useWallet()
+    const { activeAccount } = useAccounts()
+
+    const getAddress = useCallback(async (account?: Account) => {
+        return getCurrentWOTSAddress(account)
+    }, [getCurrentWOTSAddress])
+
+    const activate = useCallback(async () => {
+        if (!activeAccount) throw new Error('No active account')
+        const address = await getCurrentWOTSAddress(activeAccount)
+        if (!address) throw new Error('Could not generate WOTS address')
+        
+        await activateTag(address)
+    }, [activeAccount, getCurrentWOTSAddress, activateTag])
+
+    return {
+        getAddress,
+        activate,
+        activeAccount
+    }
 } 

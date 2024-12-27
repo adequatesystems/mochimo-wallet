@@ -41,6 +41,9 @@ export interface WalletState {
 
     // Wallet existence check
     hasWallet: () => Promise<boolean>
+
+    // WOTS operations
+    getCurrentWOTSAddress: (account?: Account) => Promise<string | null>
 }
 
 // Create storage instance
@@ -261,6 +264,26 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
         } catch (error) {
             console.error('Error checking wallet existence:', error)
             return false
+        }
+    },
+
+    getCurrentWOTSAddress: async (account?) => {
+        const { wallet, activeAccount } = get()
+        if (!wallet) throw new Error('No wallet loaded')
+        
+        const targetAccount = account || activeAccount
+        if (!targetAccount) throw new Error('No account specified')
+
+        try {
+            // Create WOTS wallet without incrementing index
+            const wots = await wallet.createWOTSWallet(targetAccount, { increment: false })
+            const address = wots.getAddress()
+            
+            if (!address) return null
+            return Buffer.from(address).toString('hex')
+        } catch (error) {
+            console.error('Error getting WOTS address:', error)
+            return null
         }
     }
 })) 
