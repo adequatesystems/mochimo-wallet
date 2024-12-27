@@ -92,7 +92,7 @@ export class HDWallet {
             name,
             index: accountIndex,
             tag: tagString,
-            nextWotsIndex: 0
+            wotsIndex: 0
         };
 
         // Create and store account
@@ -110,10 +110,10 @@ export class HDWallet {
     /**
      * Creates a new WOTS wallet for an account
      */
-    async createWOTSWallet(account: Account, options: {increment?: boolean} = {increment: true} ): Promise<WOTSWallet> {
+    async createWOTSWalletOLD(account: Account, options: { increment?: boolean } = { increment: true }): Promise<WOTSWallet> {
         if (!this.masterSeed) throw new Error('Wallet is locked');
 
-        const wotsIndex = options.increment ? account.nextWotsIndex++ : account.nextWotsIndex;
+        const wotsIndex = options.increment ? account.wotsIndex++ : account.wotsIndex;
         const wallet = await this.masterSeed.createWOTSWallet(
             account.index,
             wotsIndex,
@@ -127,17 +127,29 @@ export class HDWallet {
 
         return wallet;
     }
+
+    async getNextWOTSWallet(account: Account): Promise<WOTSWallet> {
+        if (!this.masterSeed) throw new Error('Wallet is locked');
+        const wotsIndex = account.wotsIndex + 1;
+        return this.masterSeed.createWOTSWallet(account.index, wotsIndex, `${account.name} - WOTS ${wotsIndex}`);
+    }
+
+    async getWOTSWallet(account: Account): Promise<WOTSWallet> {
+        if (!this.masterSeed) throw new Error('Wallet is locked');
+        return this.masterSeed.createWOTSWallet(account.index, account.wotsIndex, `${account.name} - WOTS ${account.wotsIndex}`);
+    }
+
     async deriveWotsIndexFromWotsAddress(accountIndex: number, wotsAddress: Uint8Array): Promise<number> {
         if (!this.masterSeed) throw new Error('Wallet is locked');
         const tag = await this.masterSeed.deriveAccountTag(accountIndex);
         const tagString = Buffer.from(tag).toString('hex');
         let ret: number = -1
-        for(let i = 0; i < 1000000; i++) {
-      
+        for (let i = 0; i < 1000000; i++) {
+
             const wots = await this.masterSeed.createWOTSWallet(accountIndex, i, `${tagString} - WOTS ${i}`);
 
 
-            if(Buffer.from(wots.getAddress()!).toString('hex') === Buffer.from(wotsAddress).toString('hex')) {
+            if (Buffer.from(wots.getAddress()!).toString('hex') === Buffer.from(wotsAddress).toString('hex')) {
                 ret = i;
                 break;
             }
@@ -230,13 +242,13 @@ export class HDWallet {
         amount: bigint,
         balance: bigint = BigInt(0),
         options: TransactionOptions = {}
-    ): Promise<{ tx: Uint8Array, datagram: Uint8Array }> {
+    ): Promise<{ tx: Uint8Array, datagram: Uint8Array, nextWotsIndex: number }> {
         if (!this.masterSeed) {
             throw new Error('Wallet is locked');
         }
 
         // Create WOTS wallet for signing
-        const wots = await this.createWOTSWallet(account);
+        const wots = await this.getWOTSWallet(account);
         const sourceAddress = wots.getAddress();
         const sourceSecret = wots.getSecret();
 
@@ -244,7 +256,7 @@ export class HDWallet {
         const fee = options.fee || BigInt(500);  // Example default fee
 
         // Create change address from next WOTS index
-        const changeWallet = await this.createWOTSWallet(account);
+        const changeWallet = await this.getNextWOTSWallet(account);
 
         const changeAddress = changeWallet.getAddress();
         const changeAmount = balance - amount - fee;
@@ -260,7 +272,7 @@ export class HDWallet {
             changeAddress!
         );
 
-        return { tx, datagram: datagram };
+        return { tx, datagram: datagram, nextWotsIndex: account.wotsIndex + 1 };
     }
 
     /**
@@ -329,7 +341,7 @@ export class HDWallet {
                 name: `Account ${i + 1}`,
                 index: i,
                 tag: tagString,
-                nextWotsIndex: 0  // Will need to scan for used WOTS addresses
+                wotsIndex: 0  // Will need to scan for used WOTS addresses
             });
 
             this.accounts.set(tagString, account);

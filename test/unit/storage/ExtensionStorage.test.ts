@@ -69,7 +69,7 @@ describe('ExtensionStorage', () => {
                 name: 'Test Account',
                 index: 0,
                 tag: 'test-tag',
-                nextWotsIndex: 0
+                wotsIndex: 0
             };
 
             const mockGet = mockStorage.sync.get as jest.MockedFunction<typeof mockStorage.sync.get>;

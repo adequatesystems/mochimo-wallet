@@ -207,15 +207,14 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
     },
 
     activateTag: async () => {
-        const { wallet, activeAccount, networkService } = get()
+        const { wallet, activeAccount, networkService, getCurrentWOTSAddress } = get()
         if (!wallet || !activeAccount) {
             throw new Error('No wallet or active account')
         }
 
         set({ isLoading: true, error: null })
         try {
-            const wots = await wallet.createWOTSWallet(activeAccount)
-            const address = wots.getAddress()
+            const address = await getCurrentWOTSAddress(activeAccount)
             if (!address) throw new Error('Failed to generate WOTS address')
             
             await networkService.activateTag(Buffer.from(address).toString('hex'))
@@ -291,7 +290,7 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
 
         try {
             // Create WOTS wallet without incrementing index
-            const wots = await wallet.createWOTSWallet(targetAccount, { increment: false })
+            const wots = await wallet.getWOTSWallet(targetAccount)
             const address = wots.getAddress()
             
             if (!address) return null

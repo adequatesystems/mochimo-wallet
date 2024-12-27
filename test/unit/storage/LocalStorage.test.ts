@@ -37,7 +37,7 @@ describe('LocalStorage', () => {
                 name: 'Test Account',
                 index: 0,
                 tag: 'test-tag',
-                nextWotsIndex: 0
+                wotsIndex: 0
             };
 
             await storage.saveAccount(account);
@@ -52,18 +52,18 @@ describe('LocalStorage', () => {
                 name: 'Test Account',
                 index: 0,
                 tag: 'test-tag',
-                nextWotsIndex: 0
+                wotsIndex: 0
             };
 
             await storage.saveAccount(account);
             await storage.saveAccount({
                 ...account,
-                nextWotsIndex: 1
+                wotsIndex: 1
             });
 
             const loaded = await storage.loadAccounts();
             expect(loaded).toHaveLength(1);
-            expect(loaded[0].nextWotsIndex).toBe(1);
+            expect(loaded[0].wotsIndex).toBe(1);
         });
 
         it('should handle multiple accounts', async () => {
@@ -72,13 +72,13 @@ describe('LocalStorage', () => {
                     name: 'Account 1',
                     index: 0,
                     tag: 'tag-1',
-                    nextWotsIndex: 0
+                    wotsIndex: 0
                 },
                 {
                     name: 'Account 2',
                     index: 1,
                     tag: 'tag-2',
-                    nextWotsIndex: 0
+                    wotsIndex: 0
                 }
             ];
 
@@ -104,7 +104,7 @@ describe('LocalStorage', () => {
                 name: 'Test',
                 index: 0,
                 tag: 'test',
-                nextWotsIndex: 0
+                wotsIndex: 0
             });
 
             // Clear it

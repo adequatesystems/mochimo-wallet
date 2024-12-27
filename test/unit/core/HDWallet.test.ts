@@ -53,7 +53,7 @@ describe('HDWallet', () => {
             const account = await wallet.createAccount('Test Account');
             expect(account.name).toBe('Test Account');
             expect(account.index).toBe(0);
-            expect(account.nextWotsIndex).toBe(0);
+            expect(account.wotsIndex).toBe(0);
         });
 
         it('should store accounts', async () => {
@@ -65,19 +65,19 @@ describe('HDWallet', () => {
 
         it('should create WOTS wallets', async () => {
             const account = await wallet.createAccount('Test Account');
-            const wots = await wallet.createWOTSWallet(account);
+            const wots = await wallet.createWOTSWalletOLD(account);
             
             expect(wots.getAddress()).toBeDefined();
             expect(wots.hasSecret()).toBe(true);
-            expect(account.nextWotsIndex).toBe(1);
+            expect(account.wotsIndex).toBe(1);
         });
 
         it('should increment WOTS index', async () => {
             const account = await wallet.createAccount('Test Account');
-            await wallet.createWOTSWallet(account);
-            await wallet.createWOTSWallet(account);
+            await wallet.createWOTSWalletOLD(account);
+            await wallet.createWOTSWalletOLD(account);
             
-            expect(account.nextWotsIndex).toBe(2);
+            expect(account.wotsIndex).toBe(2);
         });
 
         describe('active account', () => {
@@ -228,12 +228,12 @@ describe('HDWallet', () => {
         it('should create and sign transactions', async () => {
             // Create a destination address (normally from another wallet)
             const destWallet = await wallet.createAccount('Destination');
-            const destWOTS = await wallet.createWOTSWallet(destWallet);
+            const destWOTS = await wallet.createWOTSWalletOLD(destWallet);
             const destination = destWOTS.getAddress()!;
 
             // Create transaction
             const amount = BigInt(1000000);  // 0.001 MCM
-            const {tx} = await wallet.createTransaction(account, destination, amount);
+            const {tx} = await wallet.createTransaction(account, destination, amount, BigInt(1000000000), {fee: BigInt(1000)});
             const txObj = Transaction.of(tx)
             // Verify transaction
             expect(tx).toBeDefined();
@@ -249,8 +249,8 @@ describe('HDWallet', () => {
             const destination = new Uint8Array(2208);  // Empty address
             const amount = BigInt(1000000);
             const fee = BigInt(2000);
-
-            const {tx} = await wallet.createTransaction(account, destination, amount, { fee });
+            const balance = amount+fee
+            const {tx} = await wallet.createTransaction(account, destination, amount,balance, {fee});
             const txObj = Transaction.of(tx)
             expect(txObj.fee).toBe(fee);
         });
@@ -260,26 +260,17 @@ describe('HDWallet', () => {
             const destination = new Uint8Array(2208);
             const amount = BigInt(1000000);
 
-            await expect(wallet.createTransaction(account, destination, amount))
+            await expect(wallet.createTransaction(account, destination, amount, BigInt(1000000000), {fee: BigInt(1000)}))
                 .rejects.toThrow('Wallet is locked');
         });
 
-        it('should increment WOTS index after signing', async () => {
-            const destination = new Uint8Array(2208);
-            const amount = BigInt(1000000);
 
-            const initialIndex = account.nextWotsIndex;
-            await wallet.createTransaction(account, destination, amount);
-
-            // Should use 2 WOTS wallets (source and change)
-            expect(account.nextWotsIndex).toBe(initialIndex + 2);
-        });
 
         it('should validate transaction parameters', async () => {
             const destination = new Uint8Array(2208);
             const amount = BigInt(1000000);
 
-            const {tx} = await wallet.createTransaction(account, destination, amount);
+            const {tx} = await wallet.createTransaction(account, destination, amount, BigInt(1000000000), {fee: BigInt(1000)});
             const txObj = Transaction.of(tx)
             const validation = Transaction.validate(txObj, BigInt(1000));
             expect(validation).toBeNull();  // Null means valid
