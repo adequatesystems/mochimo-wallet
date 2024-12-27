@@ -135,7 +135,9 @@ export class HDWallet {
         for(let i = 0; i < 1000000; i++) {
       
             const wots = await this.masterSeed.createWOTSWallet(accountIndex, i, `${tagString} - WOTS ${i}`);
-            if(wots.getAddress() === wotsAddress) {
+
+
+            if(Buffer.from(wots.getAddress()!).toString('hex') === Buffer.from(wotsAddress).toString('hex')) {
                 ret = i;
                 break;
             }
