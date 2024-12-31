@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { HDWallet } from '../../../src/core/HDWallet';
 import { MockStorage } from '../../mocks/MockStorage';
 import { Transaction } from 'mochimo-wots-v2';
-import { Account } from '@/types/account';
+import { Account } from '../../../src/types/account';
 
 describe('HDWallet', () => {
     let storage: MockStorage;
