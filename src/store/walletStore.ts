@@ -30,7 +30,7 @@ export interface WalletState {
 
     // Transaction Actions
     sendTransaction: (destination: string, amount: bigint) => Promise<any>
-    activateTag: (tag: string) => Promise<void>
+    activateTag: (taggedAddress: string) => Promise<void>
 
     // Error handling
     clearError: () => void
@@ -217,7 +217,7 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
             const address = await getCurrentWOTSAddress(activeAccount)
             if (!address) throw new Error('Failed to generate WOTS address')
             
-            await networkService.activateTag(Buffer.from(address).toString('hex'))
+            await networkService.activateTag(address)
         } catch (error) {
             set({ error: error as Error })
             throw error
