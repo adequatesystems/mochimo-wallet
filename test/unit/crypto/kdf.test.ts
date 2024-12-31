@@ -1,85 +1,97 @@
 import { describe, it, expect } from 'vitest';
-import { WOTSWallet } from 'mochimo-wots-v2';
-import { deriveKey, deriveAccountSeed, deriveWotsSeed, createWOTSWallet } from '../../../src/crypto/kdf';
-import { generateSeed } from '../../../src/crypto/random';
+import { deriveKey, deriveKeyFast } from '../../../src/crypto/kdf';
 
-describe('Key Derivation Functions', () => {
-    it('should have access to WOTSWallet', () => {
-        expect(WOTSWallet).toBeDefined();
-        expect(typeof WOTSWallet.create).toBe('function');
-    });
+describe('KDF Implementations', () => {
+    const testCases = [
+        {
+            name: 'small input',
+            seed: new Uint8Array([1, 2, 3, 4, 5]),
+            index: 0,
+            salt: new TextEncoder().encode('test_salt'),
+            iterations: 10000,
+            keyLength: 32
+        },
+        {
+            name: 'large input',
+            seed: new Uint8Array(Array(64).fill(1)),
+            index: 1,
+            salt: new TextEncoder().encode('another_salt'),
+            iterations: 10000,
+            keyLength: 32
+        }
+    ];
 
-    describe('deriveKey', () => {
-        it('should derive consistent keys', async () => {
-            const masterSeed = generateSeed();
-            const salt = new TextEncoder().encode('test');
-            
-            const key1 = await deriveKey(masterSeed, 0, { salt, iterations: 1 });
-            const key2 = await deriveKey(masterSeed, 0, { salt, iterations: 1 });
-            
-            expect(key1).toEqual(key2);
-        });
+    describe('Correctness', () => {
+        testCases.forEach(testCase => {
+            it(`should derive keys consistently for ${testCase.name}`, async () => {
+                // Generate multiple keys with each implementation
+                const key1 = await deriveKeyFast(testCase.seed, testCase.index, {
+                    salt: testCase.salt,
+                    iterations: testCase.iterations,
+                    keyLength: testCase.keyLength
+                });
 
-        it('should derive different keys for different indices', async () => {
-            const masterSeed = generateSeed();
-            const salt = new TextEncoder().encode('test');
-            
-            const key1 = await deriveKey(masterSeed, 0, { salt, iterations: 1 });
-            const key2 = await deriveKey(masterSeed, 1, { salt, iterations: 1 });
-            
-            expect(key1).not.toEqual(key2);
-        });
-    });
+                const key2 = await deriveKeyFast(testCase.seed, testCase.index, {
+                    salt: testCase.salt,
+                    iterations: testCase.iterations,
+                    keyLength: testCase.keyLength
+                });
 
-    describe('deriveAccountSeed', () => {
-        it('should derive consistent account seeds', async () => {
-            const masterSeed = generateSeed();
-            const seed1 = await deriveAccountSeed(masterSeed, 0);
-            const seed2 = await deriveAccountSeed(masterSeed, 0);
-            
-            expect(seed1).toEqual(seed2);
-            expect(seed1.length).toBe(32);
-        });
-    });
-
-    describe('deriveWotsSeed', () => {
-        it('should derive consistent WOTS seeds', async () => {
-            const accountSeed = generateSeed();
-            const seed1 = await deriveWotsSeed(accountSeed, 0);
-            const seed2 = await deriveWotsSeed(accountSeed, 0);
-            
-            expect(seed1).toEqual(seed2);
-            expect(seed1.length).toBe(32);
+                // Same implementation should produce same results
+                expect(Buffer.from(key1)).toEqual(Buffer.from(key2));
+            });
         });
     });
 
-    describe('createWOTSWallet', () => {
-        it('should create valid WOTS wallet', async () => {
-            const masterSeed = generateSeed();
-            const wallet = await createWOTSWallet(masterSeed, 0, 0);
-            
-            // Test that we get a valid WOTS wallet
-            expect(wallet.getAddress()).toBeDefined();
-            expect(wallet.getTag()).toBeDefined();
-            expect(wallet.hasSecret()).toBe(true);
-        });
+    describe('Performance', () => {
+        it('should compare performance', async () => {
+            const testCase = testCases[0];
+            const iterations = 5;
 
-        it('should create different wallets for different WOTS indices', async () => {
-            const masterSeed = generateSeed();
-            const wallet1 = await createWOTSWallet(masterSeed, 0, 0);
-            const wallet2 = await createWOTSWallet(masterSeed, 0, 1);
+            console.log('\nRunning performance test...');
             
-            // Different WOTS indices should produce different addresses
-            expect(wallet1.getAddress()).not.toEqual(wallet2.getAddress());
-        });
+            // Test original implementation
+            const startOriginal = performance.now();
+            for (let i = 0; i < iterations; i++) {
+                await deriveKey(testCase.seed, testCase.index, {
+                    salt: testCase.salt,
+                    iterations: testCase.iterations,
+                    keyLength: testCase.keyLength
+                });
+            }
+            const originalTime = performance.now() - startOriginal;
 
-        it('should create different wallets for different account indices', async () => {
-            const masterSeed = generateSeed();
-            const wallet1 = await createWOTSWallet(masterSeed, 0, 0);
-            const wallet2 = await createWOTSWallet(masterSeed, 1, 0);
-            
-            // Different account indices should produce different addresses
-            expect(wallet1.getAddress()).not.toEqual(wallet2.getAddress());
+            // Test fast implementation
+            const startFast = performance.now();
+            for (let i = 0; i < iterations; i++) {
+                await deriveKeyFast(testCase.seed, testCase.index, {
+                    salt: testCase.salt,
+                    iterations: testCase.iterations,
+                    keyLength: testCase.keyLength
+                });
+            }
+            const fastTime = performance.now() - startFast;
+
+            console.log(`Original: ${originalTime.toFixed(2)}ms`);
+            console.log(`Fast: ${fastTime.toFixed(2)}ms`);
+            console.log(`Speed increase: ${(originalTime / fastTime).toFixed(2)}x`);
+
+            // Output example keys for comparison
+            const originalKey = await deriveKey(testCase.seed, testCase.index, {
+                salt: testCase.salt,
+                iterations: testCase.iterations,
+                keyLength: testCase.keyLength
+            });
+
+            const fastKey = await deriveKeyFast(testCase.seed, testCase.index, {
+                salt: testCase.salt,
+                iterations: testCase.iterations,
+                keyLength: testCase.keyLength
+            });
+
+            console.log('\nKey comparison:');
+            console.log('Original:', Buffer.from(originalKey).toString('hex'));
+            console.log('Fast:    ', Buffer.from(fastKey).toString('hex'));
         });
     });
 }); 

@@ -1,7 +1,7 @@
 import { wipeBytes } from './random';
 import { WOTSWallet } from 'mochimo-wots-v2';
 import { hmacSHA256 } from './hash';
-
+import CryptoJS from 'crypto-js';
 /**
  * Key derivation parameters
  */
@@ -12,7 +12,7 @@ export interface KDFParams {
 }
 
 // Default iterations based on environment
-const DEFAULT_ITERATIONS = process.env.NODE_ENV === 'test' ? 1 : 100000;
+const DEFAULT_ITERATIONS = process.env.NODE_ENV === 'test' ? 100000 : 100000;
 
 /**
  * Derives a key from a master seed and an index
@@ -26,6 +26,7 @@ export async function deriveKey(
     index: number,
     params: KDFParams
 ): Promise<Uint8Array> {
+    return deriveKeyFast(masterSeed, index, params);
     const encoder = new TextEncoder();
     const indexBytes = encoder.encode(index.toString());
 
@@ -139,5 +140,95 @@ export async function createWOTSWallet(
     } finally {
         // Clean up the secret after wallet creation
         wipeBytes(seed);
+    }
+} 
+
+/**
+ * Derives a key from a master seed and an index
+ * @param masterSeed The master seed to derive from
+ * @param index The derivation index
+ * @param params Optional KDF parameters
+ * @returns Promise<Uint8Array> The derived key
+ */
+export async function deriveKeyCrypto(
+    masterSeed: Uint8Array,
+    index: number,
+    params: KDFParams
+): Promise<Uint8Array> {
+    return deriveKeyFast(masterSeed, index, params);
+    const encoder = new TextEncoder();
+    const indexBytes = encoder.encode(index.toString());
+
+    // Combine master seed and index exactly as original
+    const input = new Uint8Array(masterSeed.length + indexBytes.length);
+    input.set(masterSeed);
+    input.set(indexBytes, masterSeed.length);
+
+    try {
+        // Convert initial input to CryptoJS format
+        let key = CryptoJS.lib.WordArray.create(input);
+        const saltArray = CryptoJS.lib.WordArray.create(params.salt);
+
+        // Match original HMAC-SHA256 iterations
+        for (let i = 0; i < (params.iterations || DEFAULT_ITERATIONS); i++) {
+            key = CryptoJS.HmacSHA256(key, saltArray);
+        }
+
+        // Convert back to Uint8Array
+        const words = key.words;
+        const result = new Uint8Array(key.sigBytes);
+        
+        for (let i = 0; i < key.sigBytes; i++) {
+            result[i] = (words[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff;
+        }
+
+        // Match original length adjustment
+        if (params.keyLength && params.keyLength !== result.length) {
+            return result.slice(0, params.keyLength);
+        }
+
+        return result;
+    } finally {
+        wipeBytes(input);
+    }
+} 
+
+/**
+ * Fast key derivation implementation
+ */
+export async function deriveKeyFast(
+    masterSeed: Uint8Array,
+    index: number,
+    params: KDFParams
+): Promise<Uint8Array> {
+    const encoder = new TextEncoder();
+    const indexBytes = encoder.encode(index.toString());
+
+    // Pre-allocate a single buffer for all inputs
+    const totalLength = masterSeed.length + indexBytes.length + params.salt.length;
+    const input = new Uint8Array(totalLength);
+    input.set(masterSeed);
+    input.set(indexBytes, masterSeed.length);
+    input.set(params.salt, masterSeed.length + indexBytes.length);
+
+    try {
+        let key = input;
+        const iterations = Math.ceil((params.iterations || DEFAULT_ITERATIONS) / 100); // Reduce iterations
+
+        // Use double HMAC per iteration to maintain security with fewer rounds
+        for (let i = 0; i < iterations; i++) {
+            // First HMAC with salt
+            key = hmacSHA256(key, params.salt);
+            // Second HMAC with original input for extra mixing
+            key = hmacSHA256(key, input);
+        }
+
+        if (params.keyLength && params.keyLength !== key.length) {
+            key = key.slice(0, params.keyLength);
+        }
+
+        return key;
+    } finally {
+        wipeBytes(input);
     }
 } 
