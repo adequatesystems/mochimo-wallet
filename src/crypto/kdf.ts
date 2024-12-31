@@ -26,7 +26,7 @@ export async function deriveKey(
     index: number,
     params: KDFParams
 ): Promise<Uint8Array> {
-    return deriveKeyFast(masterSeed, index, params);
+
     const encoder = new TextEncoder();
     const indexBytes = encoder.encode(index.toString());
 
@@ -155,7 +155,7 @@ export async function deriveKeyCrypto(
     index: number,
     params: KDFParams
 ): Promise<Uint8Array> {
-    return deriveKeyFast(masterSeed, index, params);
+
     const encoder = new TextEncoder();
     const indexBytes = encoder.encode(index.toString());
 
