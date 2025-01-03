@@ -1,5 +1,8 @@
 import CryptoJS from 'crypto-js';
 import { inflate } from 'pako';
+import crypto from 'crypto';
+import forge from 'node-forge';
+import { WOTS, WOTSWallet } from 'mochimo-wots-v2';
 
 export interface PublicHeader {
     'pbkdf2 salt': string;
@@ -31,7 +34,7 @@ export class MCMDecoder {
         const words: number[] = [];
         let i = 0;
         const len = buffer.length;
-        
+
         while (i < len) {
             words.push(
                 (buffer[i++] << 24) |
@@ -40,7 +43,7 @@ export class MCMDecoder {
                 (buffer[i++])
             );
         }
-        
+
         return CryptoJS.lib.WordArray.create(words, buffer.length);
     }
 
@@ -49,14 +52,14 @@ export class MCMDecoder {
         const sigBytes = wordArray.sigBytes;
         const u8 = new Uint8Array(sigBytes);
         let offset = 0;
-        
-        for(let i = 0; i < sigBytes; i += 4) {
+
+        for (let i = 0; i < sigBytes; i += 4) {
             const word = words[i / 4];
-            for(let j = 0; j < Math.min(4, sigBytes - i); j++) {
+            for (let j = 0; j < Math.min(4, sigBytes - i); j++) {
                 u8[offset++] = (word >>> (24 - (j * 8))) & 0xff;
             }
         }
-        
+
         return u8;
     }
 
@@ -91,6 +94,20 @@ export class MCMDecoder {
         }
     }
 
+    public static generateDeterministicSecret(deterministicSeed: Uint8Array, id: number, tag: string): { secret: Uint8Array, address: Uint8Array } {
+        const secret = deterministicAccountSecret(deterministicSeed, id);
+        const tagBytes = Buffer.from(tag, 'hex');
+        console.log('Tag:', tag, 'TagBytes:', tagBytes.length);
+        const address = WOTS.generateRandomAddress_(tagBytes, secret.secret, (bytes) => {
+            if (secret.prng) {
+                const len = bytes.length;
+                const randomBytes = secret.prng.nextBytes(len);
+                bytes.set(randomBytes);
+            }
+        });
+        return { secret: secret.secret, address: address };
+    }
+
     static async decode(mcmFile: ArrayBuffer, password: string): Promise<{
         publicHeader: PublicHeader;
         privateHeader: PrivateHeader;
@@ -120,10 +137,10 @@ export class MCMDecoder {
 
             // Derive key from password
             const salt = this.parseJavaByteArray(publicHeader['pbkdf2 salt']);
-            const key = CryptoJS.PBKDF2(password, 
-                this.arrayBufferToWordArray(salt), 
+            const key = CryptoJS.PBKDF2(password,
+                this.arrayBufferToWordArray(salt),
                 {
-                    keySize: 128/32,
+                    keySize: 128 / 32,
                     iterations: parseInt(publicHeader['pbkdf2 iteration']),
                     hasher: CryptoJS.algo.SHA1
                 }
@@ -146,7 +163,7 @@ export class MCMDecoder {
             // Decrypt and parse private header
             const decryptedHeaderBytes = this.decryptData(encryptedHeader, headerIv, key);
             console.log('Decrypted header bytes:', decryptedHeaderBytes.slice(0, 16));
-            
+
             // Find the end of JSON by looking for }
             let jsonEnd = 0;
             while (jsonEnd < decryptedHeaderBytes.length && decryptedHeaderBytes[jsonEnd] !== 0x7d) { // 0x7d is '}'
@@ -157,7 +174,7 @@ export class MCMDecoder {
             const privateHeader = JSON.parse(
                 new TextDecoder().decode(decryptedHeaderBytes.slice(0, jsonEnd))
             ) as PrivateHeader;
-
+            console.log('Private Header:', privateHeader);
             // Read entries
             const entries: WOTSEntry[] = [];
             while (fp < data.length) {
@@ -170,10 +187,10 @@ export class MCMDecoder {
 
                 // Decrypt entry
                 const decryptedEntryBytes = this.decryptData(encryptedEntry, iv, key);
-                
+
                 // Decompress and parse
                 const decompressed = inflate(decryptedEntryBytes);
-                
+
                 // Find JSON end
                 let entryJsonEnd = 0;
                 while (entryJsonEnd < decompressed.length && decompressed[entryJsonEnd] !== 0x7d) {
@@ -192,7 +209,6 @@ export class MCMDecoder {
                 entry.secret = Buffer.from(
                     this.parseJavaByteArray(entry.secret)
                 ).toString('hex');
-                console.log(entry.secret)
                 entries.push(entry);
             }
 
@@ -205,4 +221,107 @@ export class MCMDecoder {
             throw new Error('Failed to decode MCM file');
         }
     }
-} 
+}
+
+
+
+
+function intToBytes(num: number): number[] {
+    return [
+        (num >> 24) & 0xff,
+        (num >> 16) & 0xff,
+        (num >> 8) & 0xff,
+        num & 0xff
+    ];
+}
+
+function wordArrayToBytes(wordArray: any): number[] {
+    const words = wordArray.words;
+    const bytes = [];
+    for (let i = 0; i < words.length * 4; i++) {
+        bytes.push((words[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff);
+    }
+    return bytes;
+}
+
+class DigestRandomGenerator {
+    private static CYCLE_COUNT = 10;
+    private stateCounter: number = 1;
+    private seedCounter: number = 1;
+    private state: number[];
+    private seed: number[];
+
+    constructor() {
+        this.seed = new Array(64).fill(0);
+        this.state = new Array(64).fill(0);
+    }
+
+    private digestAddCounter(counter: number): number[] {
+        let value = counter;
+        const bytes = [];
+        for (let i = 0; i < 8; i++) {
+            bytes.push(value & 0xff);
+            value = value >>> 8;
+        }
+        return bytes;
+    }
+
+    private digest(data: number[]): number[] {
+        const wordArray = CryptoJS.lib.WordArray.create(new Uint8Array(data));
+        const hash = CryptoJS.SHA512(wordArray);
+        return wordArrayToBytes(hash);
+    }
+
+    private cycleSeed(): void {
+        console.log('Cycling seed...');
+        const counterBytes = this.digestAddCounter(this.seedCounter++);
+        const input = [...this.seed, ...counterBytes];
+        this.seed = this.digest(input);
+        console.log('New seed after cycle:', Buffer.from(this.seed).toString('hex'));
+    }
+
+    private generateState(): void {
+        console.log('\nGenerating state...');
+        console.log('Current state:', Buffer.from(this.state).toString('hex'));
+        console.log('Current seed:', Buffer.from(this.seed).toString('hex'));
+
+        const counterBytes = this.digestAddCounter(this.stateCounter++);
+        const input = [...counterBytes, ...this.state, ...this.seed];
+        this.state = this.digest(input);
+
+        if (this.stateCounter % DigestRandomGenerator.CYCLE_COUNT === 0) {
+            this.cycleSeed();
+        }
+    }
+
+    addSeedMaterial(seed: number[]): void {
+        const input = [...seed, ...this.seed];
+        this.seed = this.digest(input);
+    }
+
+    nextBytes(length: number): number[] {
+        this.generateState();
+        const result = this.state.slice(0, length);
+        return result;
+    }
+}
+
+export function deterministicAccountSecret(
+    deterministicSeed: Uint8Array,
+    id: number,
+
+): { secret: Uint8Array, prng: DigestRandomGenerator } {
+    const idBytes = intToBytes(id);
+    const input = [...deterministicSeed, ...idBytes];
+    const wordArray = CryptoJS.lib.WordArray.create(new Uint8Array(input));
+    const localSeedArray = CryptoJS.SHA512(wordArray);
+    const localSeed = wordArrayToBytes(localSeedArray);
+    const prng = new DigestRandomGenerator();
+    prng.addSeedMaterial(localSeed);
+    const secret = new Uint8Array(prng.nextBytes(32));
+
+
+    return { secret, prng };
+}
+
+
