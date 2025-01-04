@@ -3,6 +3,7 @@ import { inflate } from 'pako';
 import crypto from 'crypto';
 import forge from 'node-forge';
 import { WOTS, WOTSWallet } from 'mochimo-wots-v2';
+import { DigestRandomGenerator } from './digestRandomGenerator';
 
 export interface PublicHeader {
     'pbkdf2 salt': string;
@@ -30,7 +31,7 @@ export class MCMDecoder {
         return new Uint8Array(bytes);
     }
 
-    private static arrayBufferToWordArray(buffer: Uint8Array): CryptoJS.lib.WordArray {
+    public static arrayBufferToWordArray(buffer: Uint8Array): CryptoJS.lib.WordArray {
         const words: number[] = [];
         let i = 0;
         const len = buffer.length;
@@ -47,7 +48,7 @@ export class MCMDecoder {
         return CryptoJS.lib.WordArray.create(words, buffer.length);
     }
 
-    private static wordArrayToUint8Array(wordArray: CryptoJS.lib.WordArray): Uint8Array {
+    public static wordArrayToUint8Array(wordArray: CryptoJS.lib.WordArray): Uint8Array {
         const words = wordArray.words;
         const sigBytes = wordArray.sigBytes;
         const u8 = new Uint8Array(sigBytes);
@@ -244,67 +245,7 @@ function wordArrayToBytes(wordArray: any): number[] {
     return bytes;
 }
 
-class DigestRandomGenerator {
-    private static CYCLE_COUNT = 10;
-    private stateCounter: number = 1;
-    private seedCounter: number = 1;
-    private state: number[];
-    private seed: number[];
 
-    constructor() {
-        this.seed = new Array(64).fill(0);
-        this.state = new Array(64).fill(0);
-    }
-
-    private digestAddCounter(counter: number): number[] {
-        let value = counter;
-        const bytes = [];
-        for (let i = 0; i < 8; i++) {
-            bytes.push(value & 0xff);
-            value = value >>> 8;
-        }
-        return bytes;
-    }
-
-    private digest(data: number[]): number[] {
-        const wordArray = CryptoJS.lib.WordArray.create(new Uint8Array(data));
-        const hash = CryptoJS.SHA512(wordArray);
-        return wordArrayToBytes(hash);
-    }
-
-    private cycleSeed(): void {
-        console.log('Cycling seed...');
-        const counterBytes = this.digestAddCounter(this.seedCounter++);
-        const input = [...this.seed, ...counterBytes];
-        this.seed = this.digest(input);
-        console.log('New seed after cycle:', Buffer.from(this.seed).toString('hex'));
-    }
-
-    private generateState(): void {
-        console.log('\nGenerating state...');
-        console.log('Current state:', Buffer.from(this.state).toString('hex'));
-        console.log('Current seed:', Buffer.from(this.seed).toString('hex'));
-
-        const counterBytes = this.digestAddCounter(this.stateCounter++);
-        const input = [...counterBytes, ...this.state, ...this.seed];
-        this.state = this.digest(input);
-
-        if (this.stateCounter % DigestRandomGenerator.CYCLE_COUNT === 0) {
-            this.cycleSeed();
-        }
-    }
-
-    addSeedMaterial(seed: number[]): void {
-        const input = [...seed, ...this.seed];
-        this.seed = this.digest(input);
-    }
-
-    nextBytes(length: number): number[] {
-        this.generateState();
-        const result = this.state.slice(0, length);
-        return result;
-    }
-}
 
 export function deterministicAccountSecret(
     deterministicSeed: Uint8Array,
