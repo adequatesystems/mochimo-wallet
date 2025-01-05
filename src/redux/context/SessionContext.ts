@@ -24,7 +24,7 @@ export class SessionManager {
         }
     }
 
-    async getMasterSeed(): Promise<MasterSeed> {
+    async getMasterSeed(): MasterSeed {
         if (!this.masterSeed) throw new Error('Wallet is locked');
         return this.masterSeed;
     }

@@ -1,6 +1,6 @@
 import { generateSeed, wipeBytes } from '../crypto/random';
 import { deriveAccountSeed, deriveAccountTag, createWOTSWallet } from '../crypto/kdf';
-import { WOTSWallet } from 'mochimo-wots-v2';
+import { WOTS, WOTSWallet } from 'mochimo-wots-v2';
 import { encrypt, decrypt, EncryptedData } from '../crypto/encryption';
 
 import * as bip39 from '@scure/bip39';
@@ -108,21 +108,28 @@ export class MasterSeed {
     get isLocked(): boolean {
         return this._isLocked;
     }
-    
+
     deriveAccount(accountIndex: number): { tag: string, seed: Uint8Array, wotsSeed: Uint8Array, address: Uint8Array } {
         if (this._isLocked || !this.seed) {
             throw new Error('Master seed is locked');
         }
-        
-        const tag = Derivation.deriveAccountTag(this.seed, accountIndex);
-        const seed = Derivation.deriveSeed(this.seed, accountIndex);
-        const wotsSeed = Derivation.deriveWotsSeedAndAddress(seed.secret, accountIndex, Buffer.from(tag).toString('hex'));
 
-        return { 
-            tag: Buffer.from(tag).toString('hex'), 
-            seed: seed.secret, 
-            wotsSeed: wotsSeed.secret, 
-            address: wotsSeed.address 
+        const tag = Derivation.deriveAccountTag(this.seed, accountIndex);
+        const { secret: accountSeed, prng } = Derivation.deriveSeed(this.seed, accountIndex);
+        //generate first address/public key
+        const address = WOTS.generateRandomAddress_(tag, accountSeed, (bytes) => {
+            if (prng) {
+                const len = bytes.length;
+                const randomBytes = prng.nextBytes(len);
+                bytes.set(randomBytes);
+            }
+        });
+
+        return {
+            tag: Buffer.from(tag).toString('hex'),
+            seed: accountSeed,
+            wotsSeed: accountSeed,
+            address: address
         };
     }
 

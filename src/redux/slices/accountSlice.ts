@@ -1,6 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { AccountState } from '../types/state';
-import { Account } from '../../types/Account';
+import { Account } from '../../types/account';
 
 const initialState: AccountState = {
     accounts: {},

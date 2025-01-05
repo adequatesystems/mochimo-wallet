@@ -5,12 +5,12 @@ export type AccountType = 'standard' | 'imported' | 'hardware';
 export interface Account {
     name: string;
     type: AccountType;
-    address: string;
     balance: string;
     tag: string;
     index?: number;
     source?: 'mnemonic' | 'mcm';
     order?: number;
-    wotsIndex: number;
-    seed?: string;
+    wotsIndex: number; //starts from -1
+    seed: string;
+    faddress: string;// first address generated for this account
 } 

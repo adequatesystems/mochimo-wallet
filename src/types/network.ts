@@ -26,10 +26,14 @@ export interface TagResolveResponse {
 /**
  * Response from transaction push
  */
-export interface TransactionPushResponse {
-    status: 'success' | 'error';
-    data: any;  // Can be made more specific based on API
-}
+export interface TransactionResponse {
+    status: 'success' | 'error'
+    data?: {
+      sent: number
+      txid: string
+    }
+    error?: string
+  }
 
 /**
  * Response from tag activation
@@ -58,7 +62,7 @@ export interface NetworkService {
      * @param transaction Serialized transaction
      * @param recipients Optional number of recipients
      */
-    pushTransaction(transaction: string, recipients?: number): Promise<TransactionPushResponse>;
+    pushTransaction(transaction: string, recipients?: number): Promise<TransactionResponse>;
 
     /**
      * Activates a tag with its first WOTS address

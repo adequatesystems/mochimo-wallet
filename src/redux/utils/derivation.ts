@@ -4,15 +4,21 @@ import CryptoJS from 'crypto-js';
 
 export class Derivation {
     public static deriveAccountTag(masterSeed: Uint8Array, accountIndex: number): Uint8Array {
-        // First generate the WOTS public key
-        const { secret } = this.deriveSeed(masterSeed, accountIndex);
-        const tagBytes = new Uint8Array(12).fill(1); // Pre-allocate tag buffer
-        //create first wots address
-        const { address } = this.deriveWotsSeedAndAddress(secret, 0, Buffer.from(tagBytes).toString('hex'));
-        // Generate WOTS public key
+
+        const { secret, prng } = this.deriveSeed(masterSeed, accountIndex);
+        const accountSeed = secret;
+        //generate first address/public key
+        const addr = WOTS.generateRandomAddress_(new Uint8Array(12).fill(1), accountSeed, (bytes) => {
+            if (prng) {
+                const len = bytes.length;
+                const randomBytes = prng.nextBytes(len);
+                bytes.set(randomBytes);
+            }
+        });
+
         // Hash the public key with SHA3-512
         const sha3Hash = CryptoJS.SHA3(
-            CryptoJS.lib.WordArray.create(address),
+            CryptoJS.lib.WordArray.create(addr),
             { outputLength: 512 }
         );
 
