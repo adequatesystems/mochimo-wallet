@@ -1,5 +1,7 @@
+
 import { EncryptedData } from '../crypto/encryption';
 import { Account } from './account';
+
 
 export interface Storage {
     saveMasterSeed(encrypted: EncryptedData): Promise<void>;
@@ -8,7 +10,7 @@ export interface Storage {
     loadAccount(id: string): Promise<Account | null>;
     loadAccounts(): Promise<Account[]>;
     clear(): Promise<void>;
-    saveActiveAccount(account: Account): Promise<void>;
+    saveActiveAccount(account: string): Promise<void>;
     loadActiveAccount(): Promise<string | null>;
     saveHighestIndex(index: number): Promise<void>;
     loadHighestIndex(): Promise<number>;

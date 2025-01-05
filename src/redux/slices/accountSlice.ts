@@ -1,5 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { Account, AccountState } from '../types/state';
+import { AccountState } from '../types/state';
+import { Account } from '../../types/Account';
 
 const initialState: AccountState = {
     accounts: {},
@@ -54,11 +55,12 @@ const accountSlice = createSlice({
             }
         },
         reorderAccounts: (state, action: PayloadAction<{
-            orderedIds: string[];
+            [accountId: string]: number;
         }>) => {
-            action.payload.orderedIds.forEach((id, index) => {
+            // Update order for each account
+            Object.entries(action.payload).forEach(([id, order]) => {
                 if (state.accounts[id]) {
-                    state.accounts[id].order = index;
+                    state.accounts[id].order = order;
                 }
             });
         },

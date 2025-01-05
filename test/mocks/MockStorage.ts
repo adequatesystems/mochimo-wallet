@@ -1,5 +1,5 @@
 import { Storage } from '../../src/types/storage';
-import { Account } from '../../src/redux/types/state';
+import { Account } from '../../src/types/account';
 import { EncryptedData } from '../../src/crypto/encryption';
 
 export class MockStorage implements Storage {

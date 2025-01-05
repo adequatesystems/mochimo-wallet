@@ -5,7 +5,8 @@ import { configureStore } from '@reduxjs/toolkit';
 import walletReducer from '../../../../src/redux/slices/walletSlice';
 import accountReducer from '../../../../src/redux/slices/accountSlice';
 import type { RootState } from '../../../../src/redux/store';
-import type { Store } from '@reduxjs/toolkit';
+import type { Store, AnyAction } from '@reduxjs/toolkit';
+import { ThunkDispatch } from 'redux-thunk';
 import {
     updateAccountAction,
     updateAccountWOTSAction,
@@ -18,7 +19,9 @@ import {
 import { createWalletAction, unlockWalletAction, createAccountAction } from '../../../../src/redux/actions/walletActions';
 
 describe('Account Actions', () => {
-    let store: Store<RootState>;
+    let store: Store<RootState> & {
+        dispatch: ThunkDispatch<RootState, unknown, AnyAction>;
+    };
     let mockStorage: MockStorage;
     const testPassword = 'testpassword';
 
@@ -358,7 +361,7 @@ describe('Account Actions', () => {
         it('should delete an account', async () => {
             // Setup two accounts so we can delete one
             const account1 = await setupWalletWithAccount('Account 1');
-            const account2 = await createAccountAction('Account 2');
+            const account2 = await store.dispatch(createAccountAction('Account 2'));
             
             await store.dispatch(deleteAccountAction(account2.tag));
 

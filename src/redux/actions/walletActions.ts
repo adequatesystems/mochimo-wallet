@@ -11,9 +11,8 @@ import { addAccount, bulkAddAccounts, setSelectedAccount } from '../slices/accou
 import { HDWallet } from '../../core/HDWallet';
 import { StorageProvider } from '../context/StorageContext';
 import { SessionManager } from '../context/SessionContext';
-import { Account } from '../types/state';
+import { Account } from '../../types/account';
 import { EncryptedData } from '../../crypto/encryption';
-import { Derivation } from '../utils/derivation';
 import { MasterSeed } from '../../core/MasterSeed';
 
 

@@ -1,4 +1,5 @@
-import { AccountType, NetworkType } from '../../types/account';
+import { NetworkType } from '../../types/account';
+import { Account } from '../../types/account';
 
 export interface WalletState {
     initialized: boolean;
@@ -8,19 +9,6 @@ export interface WalletState {
     error: string | null;
     highestAccountIndex: number;
     activeAccount: string | null;
-}
-
-export interface Account {
-    name: string;
-    type: AccountType;
-    address: string;
-    balance: string;
-    tag: string;
-    index?: number;  // Required for HD wallet accounts (account index)
-    seed?: string;   // Required for imported accounts (MCM)
-    source: 'mnemonic' | 'mcm';
-    order?: number;
-    wotsIndex: number;  // Track next WOTS key index
 }
 
 export interface AccountState {

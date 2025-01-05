@@ -2,7 +2,7 @@ import { AppThunk } from '../store';
 import { addAccount, bulkAddAccounts, updateAccount, removeAccount, reorderAccounts } from '../slices/accountSlice';
 import { setError } from '../slices/walletSlice';
 import { StorageProvider } from '../context/StorageContext';
-import { Account } from '../types/state';
+import { Account } from '../../types/Account';
 import { generateNextWOTSKey } from '../utils/derivation';
 
 // Update account
@@ -43,6 +43,8 @@ export const updateAccountWOTSAction = (
         const account = state.accounts.accounts[accountId];
 
         if (!account) throw new Error('Account not found');
+        if (!account.seed) throw new Error('Invalid account seed');
+        if (account.wotsIndex < 0) throw new Error('Invalid wots index');
 
         if (account.source === 'mcm' && account.seed) {
             const { address } = generateNextWOTSKey(
@@ -73,6 +75,16 @@ export const importMCMAccountAction = (
     wotsIndex: number
 ): AppThunk => async (dispatch, getState) => {
     try {
+        // Validate tag length
+        if (tag.length !== 24) {
+            throw new Error('Invalid tag length');
+        }
+
+        // Validate address format (64 hex chars)
+        if (!/^[0-9a-fA-F]{64}$/.test(address)) {
+            throw new Error('Invalid address format');
+        }
+
         const state = getState();
         const storage = StorageProvider.getStorage();
 
@@ -108,6 +120,12 @@ export const bulkImportMCMAccountsAction = (
     }>
 ): AppThunk => async (dispatch, getState) => {
     try {
+        // Check for duplicate tags
+        const tags = accounts.map(a => a.tag);
+        if (new Set(tags).size !== tags.length) {
+            throw new Error('Duplicate account tag');
+        }
+
         const state = getState();
         const storage = StorageProvider.getStorage();
         const startOrder = Object.keys(state.accounts.accounts).length;
