@@ -12,6 +12,7 @@ export interface Storage {
     loadActiveAccount(): Promise<string | null>;
     saveHighestIndex(index: number): Promise<void>;
     loadHighestIndex(): Promise<number>;
+    deleteAccount(id: string): Promise<void>;
 }
 
 // Extension storage types

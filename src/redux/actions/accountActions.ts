@@ -1,5 +1,5 @@
 import { AppThunk } from '../store';
-import { addAccount, bulkAddAccounts, updateAccount } from '../slices/accountSlice';
+import { addAccount, bulkAddAccounts, updateAccount, removeAccount, reorderAccounts } from '../slices/accountSlice';
 import { setError } from '../slices/walletSlice';
 import { StorageProvider } from '../context/StorageContext';
 import { Account } from '../types/state';
@@ -135,6 +135,81 @@ export const bulkImportMCMAccountsAction = (
         dispatch(bulkAddAccounts(accountEntries));
     } catch (error) {
         dispatch(setError('Failed to import accounts'));
+        throw error;
+    }
+};
+
+// Delete account
+export const deleteAccountAction = (
+    accountId: string
+): AppThunk => async (dispatch, getState) => {
+    try {
+        const state = getState();
+        const account = state.accounts.accounts[accountId];
+        
+        if (!account) {
+            throw new Error('Account not found');
+        }
+
+        // Don't allow deleting the last account
+        const accountCount = Object.keys(state.accounts.accounts).length;
+        if (accountCount <= 1) {
+            throw new Error('Cannot delete last account');
+        }
+
+        const storage = StorageProvider.getStorage();
+        
+        // Remove from storage
+        await storage.deleteAccount(accountId);
+        
+        // Update Redux state
+        dispatch(removeAccount(accountId));
+
+    } catch (error) {
+        dispatch(setError('Failed to delete account'));
+        throw error;
+    }
+};
+
+// Reorder accounts
+export const reorderAccountsAction = (
+    newOrder: { [accountId: string]: number }
+): AppThunk => async (dispatch, getState) => {
+    try {
+        const state = getState();
+        const accounts = state.accounts.accounts;
+        
+        // Validate the new order
+        const currentIds = new Set(Object.keys(accounts));
+        const newIds = new Set(Object.keys(newOrder));
+        
+        // Check if all accounts are included
+        if (currentIds.size !== newIds.size || 
+            ![...currentIds].every(id => newIds.has(id))) {
+            throw new Error('New order must include all accounts');
+        }
+        
+        // Check if order numbers are unique and sequential
+        const orderValues = Object.values(newOrder);
+        const uniqueOrders = new Set(orderValues);
+        if (uniqueOrders.size !== orderValues.length) {
+            throw new Error('Order numbers must be unique');
+        }
+
+        const storage = StorageProvider.getStorage();
+        
+        // Update storage
+        await Promise.all(
+            Object.entries(newOrder).map(([id, order]) => 
+                storage.saveAccount({ ...accounts[id], order })
+            )
+        );
+        
+        // Update Redux state
+        dispatch(reorderAccounts(newOrder));
+
+    } catch (error) {
+        dispatch(setError('Failed to reorder accounts'));
         throw error;
     }
 }; 

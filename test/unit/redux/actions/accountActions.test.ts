@@ -11,7 +11,9 @@ import {
     updateAccountWOTSAction,
     importMCMAccountAction,
     bulkImportMCMAccountsAction,
-    renameAccountAction
+    renameAccountAction,
+    deleteAccountAction,
+    reorderAccountsAction
 } from '../../../../src/redux/actions/accountActions';
 import { createWalletAction, unlockWalletAction, createAccountAction } from '../../../../src/redux/actions/walletActions';
 
@@ -65,6 +67,37 @@ describe('Account Actions', () => {
         });
     });
 
+    describe('updateAccountAction', () => {
+        it('should update account fields', async () => {
+            const account = await setupWalletWithAccount();
+            const updates = {
+                name: 'Updated Name',
+                balance: '1000',
+                wotsIndex: 1
+            };
+
+            await store.dispatch(updateAccountAction(account.tag, updates));
+
+            // Check Redux state
+            const state = store.getState();
+            const updatedAccount = state.accounts.accounts[account.tag];
+            expect(updatedAccount.name).toBe(updates.name);
+            expect(updatedAccount.balance).toBe(updates.balance);
+            expect(updatedAccount.wotsIndex).toBe(updates.wotsIndex);
+
+            // Check storage
+            const storedAccounts = await mockStorage.loadAccounts();
+            const storedAccount = storedAccounts.find(a => a.tag === account.tag);
+            expect(storedAccount).toMatchObject(updates);
+        });
+
+        it('should fail for non-existent account', async () => {
+            await expect(
+                store.dispatch(updateAccountAction('invalid-tag', { name: 'New Name' }))
+            ).rejects.toThrow('Account not found');
+        });
+    });
+
     describe('updateAccountWOTSAction', () => {
         it('should update WOTS key for MCM account', async () => {
             await setupWalletWithAccount(); // Setup wallet first
@@ -111,6 +144,50 @@ describe('Account Actions', () => {
             const state = store.getState();
             expect(state.accounts.accounts[account.tag].address).toBe(originalAddress);
         });
+
+        it('should handle invalid WOTS index', async () => {
+            const mcmAccount = {
+                name: 'MCM Account',
+                address: '0'.repeat(64),
+                seed: '1'.repeat(64),
+                tag: 'a'.repeat(24),
+                wotsIndex: -1 // Invalid index
+            };
+
+            await store.dispatch(importMCMAccountAction(
+                mcmAccount.name,
+                mcmAccount.address,
+                mcmAccount.seed,
+                mcmAccount.tag,
+                mcmAccount.wotsIndex
+            ));
+
+            await expect(
+                store.dispatch(updateAccountWOTSAction(mcmAccount.tag))
+            ).rejects.toThrow('Invalid wots index');
+        });
+
+        it('should handle missing seed', async () => {
+            const mcmAccount = {
+                name: 'MCM Account',
+                address: '0'.repeat(64),
+                tag: 'a'.repeat(24),
+                wotsIndex: 0,
+                seed: '' // Empty seed
+            };
+
+            await store.dispatch(importMCMAccountAction(
+                mcmAccount.name,
+                mcmAccount.address,
+                mcmAccount.seed,
+                mcmAccount.tag,
+                mcmAccount.wotsIndex
+            ));
+
+            await expect(
+                store.dispatch(updateAccountWOTSAction(mcmAccount.tag))
+            ).rejects.toThrow('Invalid account seed');
+        });
     });
 
     describe('importMCMAccountAction', () => {
@@ -146,6 +223,32 @@ describe('Account Actions', () => {
             const storedAccount = storedAccounts.find(a => a.tag === mcmAccount.tag);
             expect(storedAccount).toBeTruthy();
             expect(storedAccount?.seed).toBe(mcmAccount.seed);
+        });
+
+        it('should fail with invalid tag length', async () => {
+            const invalidTag = '123'; // Too short
+            
+            await expect(
+                store.dispatch(importMCMAccountAction(
+                    'Test',
+                    '0'.repeat(64),
+                    '1'.repeat(64),
+                    invalidTag,
+                    0
+                ))
+            ).rejects.toThrow('Invalid tag length');
+        });
+
+        it('should fail with invalid address format', async () => {
+            await expect(
+                store.dispatch(importMCMAccountAction(
+                    'Test',
+                    'invalid-address',
+                    '1'.repeat(64),
+                    'a'.repeat(24),
+                    0
+                ))
+            ).rejects.toThrow('Invalid address format');
         });
     });
 
@@ -215,6 +318,132 @@ describe('Account Actions', () => {
             mcmAccounts.forEach((_, i) => {
                 expect(accounts[i + 1].order).toBe(i + 1);
             });
+        });
+
+        it('should handle empty account list', async () => {
+            await setupWalletWithAccount();
+            await store.dispatch(bulkImportMCMAccountsAction([]));
+            
+            const state = store.getState();
+            expect(Object.keys(state.accounts.accounts).length).toBe(1); // Only base account
+        });
+
+        it('should handle duplicate tags', async () => {
+            await setupWalletWithAccount();
+
+            const mcmAccounts = [
+                {
+                    name: 'MCM 1',
+                    address: '0'.repeat(64),
+                    seed: '1'.repeat(64),
+                    tag: 'same-tag'.repeat(4),
+                    wotsIndex: 0
+                },
+                {
+                    name: 'MCM 2',
+                    address: '3'.repeat(64),
+                    seed: '4'.repeat(64),
+                    tag: 'same-tag'.repeat(4),
+                    wotsIndex: 0
+                }
+            ];
+
+            await expect(
+                store.dispatch(bulkImportMCMAccountsAction(mcmAccounts))
+            ).rejects.toThrow('Duplicate account tag');
+        });
+    });
+
+    describe('deleteAccountAction', () => {
+        it('should delete an account', async () => {
+            // Setup two accounts so we can delete one
+            const account1 = await setupWalletWithAccount('Account 1');
+            const account2 = await createAccountAction('Account 2');
+            
+            await store.dispatch(deleteAccountAction(account2.tag));
+
+            // Check Redux state
+            const state = store.getState();
+            expect(state.accounts.accounts[account2.tag]).toBeUndefined();
+            expect(Object.keys(state.accounts.accounts).length).toBe(1);
+
+            // Check storage
+            const storedAccounts = await mockStorage.loadAccounts();
+            expect(storedAccounts.length).toBe(1);
+            expect(storedAccounts[0].tag).toBe(account1.tag);
+        });
+
+        it('should not allow deleting the last account', async () => {
+            const account = await setupWalletWithAccount();
+            
+            await expect(
+                store.dispatch(deleteAccountAction(account.tag))
+            ).rejects.toThrow('Cannot delete last account');
+        });
+
+        it('should fail for non-existent account', async () => {
+            await setupWalletWithAccount();
+            
+            await expect(
+                store.dispatch(deleteAccountAction('invalid-tag'))
+            ).rejects.toThrow('Account not found');
+        });
+    });
+
+    describe('reorderAccountsAction', () => {
+        it('should reorder accounts', async () => {
+            // Setup multiple accounts
+            const account1 = await setupWalletWithAccount('Account 1');
+            const account2 = await store.dispatch(createAccountAction('Account 2'));
+            const account3 = await store.dispatch(createAccountAction('Account 3'));
+
+            const newOrder = {
+                [account1.tag]: 2,
+                [account2.tag]: 0,
+                [account3.tag]: 1
+            };
+
+            await store.dispatch(reorderAccountsAction(newOrder));
+
+            // Check Redux state
+            const state = store.getState();
+            expect(state.accounts.accounts[account1.tag].order).toBe(2);
+            expect(state.accounts.accounts[account2.tag].order).toBe(0);
+            expect(state.accounts.accounts[account3.tag].order).toBe(1);
+
+            // Check storage
+            const storedAccounts = await mockStorage.loadAccounts();
+            storedAccounts.forEach(account => {
+                expect(account.order).toBe(newOrder[account.tag]);
+            });
+        });
+
+        it('should fail if not all accounts are included', async () => {
+            const account1 = await setupWalletWithAccount('Account 1');
+            const account2 = await store.dispatch(createAccountAction('Account 2'));
+
+            const incompleteOrder = {
+                [account1.tag]: 0
+                // account2 missing
+            };
+
+            await expect(
+                store.dispatch(reorderAccountsAction(incompleteOrder))
+            ).rejects.toThrow('New order must include all accounts');
+        });
+
+        it('should fail if order numbers are not unique', async () => {
+            const account1 = await setupWalletWithAccount('Account 1');
+            const account2 = await store.dispatch(createAccountAction('Account 2'));
+
+            const duplicateOrder = {
+                [account1.tag]: 0,
+                [account2.tag]: 0  // Duplicate order number
+            };
+
+            await expect(
+                store.dispatch(reorderAccountsAction(duplicateOrder))
+            ).rejects.toThrow('Order numbers must be unique');
         });
     });
 }); 

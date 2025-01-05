@@ -61,4 +61,8 @@ export class MockStorage implements Storage {
         const account = this.data.accounts.find(a => a.tag === id);
         return account || null;
     }
+
+    async deleteAccount(id: string): Promise<void> {
+        this.data.accounts = this.data.accounts.filter(a => a.tag !== id);
+    }
 } 
