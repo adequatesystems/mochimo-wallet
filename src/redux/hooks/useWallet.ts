@@ -1,12 +1,13 @@
 import { useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from './useStore';
 import { createWalletAction, unlockWalletAction, lockWalletAction } from '../actions/walletActions';
-import { selectWalletStatus, selectWalletError } from '../selectors/walletSelectors';
+import { selectWalletStatus, selectWalletError, selectNetwork } from '../selectors/walletSelectors';
 
 export const useWallet = () => {
     const dispatch = useAppDispatch();
     const { isLocked, hasWallet, isInitialized } = useAppSelector(selectWalletStatus);
     const error = useAppSelector(selectWalletError);
+    const network = useAppSelector(selectNetwork);
 
     const createWallet = useCallback(async (password: string, mnemonic?: string) => {
         return dispatch(createWalletAction(password, mnemonic));
@@ -17,14 +18,18 @@ export const useWallet = () => {
     }, [dispatch]);
 
     const lockWallet = useCallback(() => {
+        if (!hasWallet) {
+            throw new Error('No wallet exists');
+        }
         dispatch(lockWalletAction());
-    }, [dispatch]);
+    }, [dispatch, hasWallet]);
 
     return {
         isLocked,
         hasWallet,
         isInitialized,
         error,
+        network,
         createWallet,
         unlockWallet,
         lockWallet
