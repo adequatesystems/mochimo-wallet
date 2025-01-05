@@ -47,14 +47,13 @@ export const sendTransactionAction = createAsyncThunk(
             return txHash;
 
         } catch (error) {
-            dispatch(setError(error as Error));
+            dispatch(setError(error instanceof Error ? error.message : 'Unknown error'));
             throw error;
         } finally {
             dispatch(setLoading(false));
         }
     }
 );
-
 export interface TransactionOptions {
     fee?: bigint;
     name?: string;  // Optional name for the WOTS wallet

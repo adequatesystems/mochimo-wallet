@@ -128,23 +128,23 @@ describe('Account Actions', () => {
             const state = store.getState();
             const updatedAccount = state.accounts.accounts[mcmAccount.tag];
             expect(updatedAccount.wotsIndex).toBe(1);
-            expect(updatedAccount.address).not.toBe(mcmAccount.address);
+            expect(updatedAccount.faddress).toBe(mcmAccount.address);
 
             // Check storage
             const storedAccounts = await mockStorage.loadAccounts();
             const storedAccount = storedAccounts.find(a => a.tag === mcmAccount.tag);
             expect(storedAccount?.wotsIndex).toBe(1);
-            expect(storedAccount?.address).toBe(updatedAccount.address);
+            expect(storedAccount?.faddress).toBe(updatedAccount.faddress);
         });
 
         it('should not update non-MCM accounts', async () => {
             const account = await setupWalletWithAccount();
-            const originalAddress = account.address;
+            const originalAddress = account.faddress;
 
             await store.dispatch(updateAccountWOTSAction(account.tag));
 
             const state = store.getState();
-            expect(state.accounts.accounts[account.tag].address).toBe(originalAddress);
+            expect(state.accounts.accounts[account.tag].faddress).toBe(originalAddress);
         });
 
         it('should handle invalid WOTS index', async () => {

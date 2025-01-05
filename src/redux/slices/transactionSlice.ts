@@ -2,7 +2,7 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 interface TransactionState {
     isLoading: boolean;
-    error: Error | null;
+    error: string | null;
     pendingTransactions: string[]; // Array of transaction hashes
 }
 
@@ -19,7 +19,7 @@ const transactionSlice = createSlice({
         setLoading: (state, action: PayloadAction<boolean>) => {
             state.isLoading = action.payload;
         },
-        setError: (state, action: PayloadAction<Error | null>) => {
+        setError: (state, action: PayloadAction<string | null>) => {
             state.error = action.payload;
         },
         addPendingTransaction: (state, action: PayloadAction<string>) => {

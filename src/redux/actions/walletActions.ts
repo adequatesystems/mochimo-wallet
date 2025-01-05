@@ -112,7 +112,7 @@ export const createAccountAction = (name?: string): AppThunk<Account> => async (
         const account: Account = {
             name: name || 'Account ' + (accountIndex + 1),
             type: 'standard' as const,
-            // address: Buffer.from(w.address).toString('hex'),
+            faddress: Buffer.from(w.address).toString('hex'),
             balance: '0',
             index: accountIndex,
             tag: w.tag,

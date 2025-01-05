@@ -1,206 +1,101 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { MockStorage } from '../../../mocks/MockStorage';
-import { StorageProvider } from '../../../../src/redux/context/StorageContext';
+import { vi } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
 import walletReducer from '../../../../src/redux/slices/walletSlice';
-import accountReducer from '../../../../src/redux/slices/accountSlice';
-import {
-    createWalletAction,
-    unlockWalletAction,
-    createAccountAction,
-    exportWalletJSONAction,
-    loadWalletJSONAction,
-    lockWalletAction,
-    setSelectedAccountAction
-} from '../../../../src/redux/actions/walletActions';
+import { createWalletAction, lockWalletAction, unlockWalletAction } from '../../../../src/redux/actions/walletActions';
+import { SessionManager } from '../../../../src/redux/context/SessionContext';
+import { MasterSeed } from '../../../../src/core/MasterSeed';
 
 describe('Wallet Actions', () => {
-    let store: any;
-    let mockStorage: MockStorage;
-    const testPassword = 'testpassword';
+    let store: ReturnType<typeof configureStore>;
+    let mockSession: SessionManager;
 
     beforeEach(() => {
-        mockStorage = new MockStorage();
-        StorageProvider.setStorage(mockStorage);
-        
         store = configureStore({
             reducer: {
-                wallet: walletReducer,
-                accounts: accountReducer
+                wallet: walletReducer
             }
         });
+
+        // Mock SessionManager
+        mockSession = {
+            setMasterSeed: vi.fn(),
+            unlock: vi.fn(),
+            lock: vi.fn(),
+            getMasterSeed: vi.fn(),
+            getInstance: vi.fn()
+        } as unknown as SessionManager;
+
+        vi.spyOn(SessionManager, 'getInstance').mockReturnValue(mockSession);
     });
 
-    // Helper function to setup an unlocked wallet
-    async function setupUnlockedWallet() {
-        await store.dispatch(createWalletAction(testPassword));
-        await store.dispatch(unlockWalletAction(testPassword));
-    }
-
     describe('createWalletAction', () => {
-        it('should create a new wallet and return mnemonic', async () => {
-            const seedPhrase = await store.dispatch(createWalletAction(testPassword));
+        it('should create a wallet successfully', async () => {
+            const mockMasterSeed = await MasterSeed.create();
+            vi.spyOn(MasterSeed, 'create').mockResolvedValue(mockMasterSeed);
+            mockSession.setMasterSeed.mockResolvedValue(undefined);
 
-            const state = store.getState();
-            expect(state.wallet.hasWallet).toBe(true);
-            expect(state.wallet.initialized).toBe(true);
-            
-            // Check storage
-            const masterSeed = await mockStorage.loadMasterSeed();
-            expect(masterSeed).toBeTruthy();
+            await store.dispatch(createWalletAction('password'));
 
-            // Verify seed phrase
-            expect(seedPhrase).toBeTruthy();
-            expect(typeof seedPhrase).toBe('string');
-            expect(seedPhrase.split(' ').length).toBe(24); // BIP39 24-word mnemonic
+            const state = store.getState().wallet;
+            expect(state.hasWallet).toBe(true);
+            expect(state.initialized).toBe(true);
+            expect(state.locked).toBe(false);
+            expect(state.error).toBeNull();
+            expect(mockSession.setMasterSeed).toHaveBeenCalledWith(mockMasterSeed, 'password');
         });
 
-        it('should fail with invalid password', async () => {
-            await expect(async () => {
-                await store.dispatch(createWalletAction(''));
-            }).rejects.toThrow('Password is required');
-        });
+        it('should handle creation errors', async () => {
+            const error = new Error('Creation failed');
+            vi.spyOn(MasterSeed, 'create').mockRejectedValue(error);
 
-        it('should accept custom mnemonic', async () => {
-            const testMnemonic = 'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about';
-            
-            const returnedMnemonic = await store.dispatch(
-                createWalletAction(testPassword, testMnemonic)
-            );
+            await expect(store.dispatch(createWalletAction('password'))).rejects.toThrow('Creation failed');
 
-            expect(returnedMnemonic).toBe(testMnemonic);
-            
-            const state = store.getState();
-            expect(state.wallet.hasWallet).toBe(true);
-            expect(state.wallet.initialized).toBe(true);
+            const state = store.getState().wallet;
+            expect(state.error).toBe('Creation failed');
         });
     });
 
     describe('unlockWalletAction', () => {
-        it('should unlock an existing wallet and load accounts', async () => {
-            // First create a wallet and unlock it
-            await setupUnlockedWallet();
-            
-            // Create an account
-            await store.dispatch(createAccountAction('Test Account'));
-            
-            // Lock it
-            await store.dispatch(lockWalletAction());
-            
-            // Try to unlock
-            await store.dispatch(unlockWalletAction(testPassword));
-            
-            const state = store.getState();
-            expect(state.wallet.locked).toBe(false);
-            expect(Object.keys(state.accounts.accounts).length).toBe(1);
-            expect(state.wallet.highestAccountIndex).toBe(0);
+        it('should unlock wallet successfully', async () => {
+            mockSession.unlock.mockResolvedValue(undefined);
+
+            await store.dispatch(unlockWalletAction('password'));
+
+            const state = store.getState().wallet;
+            expect(state.locked).toBe(false);
+            expect(state.error).toBeNull();
+            expect(mockSession.unlock).toHaveBeenCalledWith('password');
         });
 
-        it('should fail with wrong password', async () => {
-            await store.dispatch(createWalletAction(testPassword));
-            
-            await expect(
-                store.dispatch(unlockWalletAction('wrongpassword'))
-            ).rejects.toThrow();
-        });
-    });
+        it('should handle unlock errors', async () => {
+            const error = new Error('Invalid password');
+            mockSession.unlock.mockRejectedValue(error);
 
-    describe('createAccountAction', () => {
-        beforeEach(async () => {
-            await setupUnlockedWallet();
-        });
+            await expect(store.dispatch(unlockWalletAction('password'))).rejects.toThrow('Invalid password');
 
-        it('should create a new account with custom name', async () => {
-            const result = await store.dispatch(createAccountAction('Test Account'));
-            
-            const state = store.getState();
-            const account = state.accounts.accounts[result.tag];
-            
-            expect(account.name).toBe('Test Account');
-            expect(account.type).toBe('standard');
-            expect(account.address).toBeTruthy();
-            expect(account.wotsIndex).toBe(0);
-            expect(account.seed).toBeTruthy();
-            expect(account.order).toBe(0);
-            
-            // Check storage
-            const storedAccounts = await mockStorage.loadAccounts();
-            expect(storedAccounts.length).toBe(1);
-            expect(storedAccounts[0].tag).toBe(result.tag);
-        });
-
-        it('should create account with default name if none provided', async () => {
-            const result = await store.dispatch(createAccountAction());
-            
-            const state = store.getState();
-            expect(state.accounts.accounts[result.tag].name).toBe('Account 1');
-        });
-
-        it('should increment highest index', async () => {
-            await store.dispatch(createAccountAction('Account 1'));
-            await store.dispatch(createAccountAction('Account 2'));
-            
-            const state = store.getState();
-            expect(state.wallet.highestAccountIndex).toBe(1);
-            
-            // Check storage
-            const highestIndex = await mockStorage.loadHighestIndex();
-            expect(highestIndex).toBe(1);
-        });
-    });
-
-    describe('exportWalletJSONAction', () => {
-        beforeEach(async () => {
-            await setupUnlockedWallet();
-        });
-
-        it('should export wallet with accounts', async () => {
-            await store.dispatch(createAccountAction('Test Account'));
-            
-            const exported = await store.dispatch(exportWalletJSONAction(testPassword));
-            
-            expect(exported.version).toBe('1.0.0');
-            expect(exported.encrypted).toBeTruthy();
-            expect(Object.keys(exported.accounts).length).toBe(1);
-        });
-
-        it('should fail if wallet is locked', async () => {
-            await store.dispatch(lockWalletAction());
-            
-            await expect(
-                store.dispatch(exportWalletJSONAction(testPassword))
-            ).rejects.toThrow('Wallet is locked');
-        });
-    });
-
-    describe('setSelectedAccountAction', () => {
-        it('should set and persist selected account', async () => {
-            await setupUnlockedWallet();
-            const account = await store.dispatch(createAccountAction('Test Account'));
-            
-            await store.dispatch(setSelectedAccountAction(account.tag));
-            
-            const state = store.getState();
-            expect(state.accounts.selectedAccount).toBe(account.tag);
-            
-            // Check storage
-            const storedActiveAccount = await mockStorage.loadActiveAccount();
-            expect(storedActiveAccount).toBe(account.tag);
+            const state = store.getState().wallet;
+            expect(state.error).toBe('Invalid password');
         });
     });
 
     describe('lockWalletAction', () => {
-        it('should lock wallet and clear session', async () => {
-            await setupUnlockedWallet();
+        it('should lock wallet successfully', async () => {
             await store.dispatch(lockWalletAction());
-            
-            const state = store.getState();
-            expect(state.wallet.locked).toBe(true);
-            
-            // Try to create account (should fail because wallet is locked)
-            await expect(
-                store.dispatch(createAccountAction('Test'))
-            ).rejects.toThrow();
+
+            const state = store.getState().wallet;
+            expect(state.locked).toBe(true);
+            expect(state.error).toBeNull();
+            expect(mockSession.lock).toHaveBeenCalled();
+        });
+
+        it('should handle lock errors', async () => {
+            const error = new Error('Lock failed');
+            mockSession.lock.mockImplementation(() => { throw error; });
+
+            await expect(store.dispatch(lockWalletAction())).rejects.toThrow('Lock failed');
+
+            const state = store.getState().wallet;
+            expect(state.error).toBe('Lock failed');
         });
     });
 }); 

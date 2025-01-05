@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from './useStore';
 import { sendTransactionAction } from '../actions/transactionActions';
-import { Amount } from '../../types/amount';
+
 
 export const useTransaction = () => {
     const dispatch = useAppDispatch();
@@ -11,7 +11,7 @@ export const useTransaction = () => {
 
     const sendTransaction = useCallback(async (
         to: string,
-        amount: Amount,
+        amount: bigint,
         tag?: string
     ) => {
         return dispatch(sendTransactionAction({ to, amount, tag })).unwrap();
