@@ -6,6 +6,7 @@ import { encrypt, decrypt, EncryptedData } from '../crypto/encryption';
 import * as bip39 from '@scure/bip39';
 import { wordlist } from '@scure/bip39/wordlists/english';
 import { DigestRandomGenerator, wordArrayToBytes } from '@/crypto/digestRandomGenerator';
+import { Derivation } from '../redux/utils/derivation';
 
 export interface EncryptedSeed {
     data: string;      // Base64 encrypted seed
@@ -107,16 +108,33 @@ export class MasterSeed {
     get isLocked(): boolean {
         return this._isLocked;
     }
+    
+    deriveAccount(accountIndex: number): { tag: string, seed: Uint8Array, wotsSeed: Uint8Array, address: Uint8Array } {
+        if (this._isLocked || !this.seed) {
+            throw new Error('Master seed is locked');
+        }
+        
+        const tag = Derivation.deriveAccountTag(this.seed, accountIndex);
+        const seed = Derivation.deriveSeed(this.seed, accountIndex);
+        const wotsSeed = Derivation.deriveWotsSeedAndAddress(seed.secret, accountIndex, Buffer.from(tag).toString('hex'));
+
+        return { 
+            tag: Buffer.from(tag).toString('hex'), 
+            seed: seed.secret, 
+            wotsSeed: wotsSeed.secret, 
+            address: wotsSeed.address 
+        };
+    }
 
     /**
      * Derives an account seed for the given index
      * @throws Error if the master seed is locked
      */
-    async deriveAccountSeed(accountIndex: number): Promise<Uint8Array> {
+    deriveAccountSeed(accountIndex: number): Uint8Array {
         if (this._isLocked || !this.seed) {
             throw new Error('Master seed is locked');
         }
-        return deriveAccountSeed(this.seed, accountIndex);
+        return Derivation.deriveSeed(this.seed, accountIndex).secret;
     }
 
     /**
@@ -127,7 +145,7 @@ export class MasterSeed {
         if (this._isLocked || !this.seed) {
             throw new Error('Master seed is locked');
         }
-        return deriveAccountTag(this.seed, accountIndex);
+        return Derivation.deriveAccountTag(this.seed, accountIndex);
     }
 
     /**
@@ -186,7 +204,7 @@ export class MasterSeed {
             throw new Error('Failed to decrypt master seed - invalid password');
         }
     }
-    
+
 
 
 

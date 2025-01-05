@@ -56,4 +56,9 @@ export class MockStorage implements Storage {
     async loadHighestIndex(): Promise<number> {
         return this.data.highestIndex;
     }
+
+    async loadAccount(id: string): Promise<Account | null> {
+        const account = this.data.accounts.find(a => a.tag === id);
+        return account || null;
+    }
 } 

@@ -5,6 +5,7 @@ export interface Storage {
     saveMasterSeed(encrypted: EncryptedData): Promise<void>;
     loadMasterSeed(): Promise<EncryptedData | null>;
     saveAccount(account: Account): Promise<void>;
+    loadAccount(id: string): Promise<Account | null>;
     loadAccounts(): Promise<Account[]>;
     clear(): Promise<void>;
     saveActiveAccount(account: Account): Promise<void>;

@@ -106,13 +106,8 @@ export const createAccountAction = (name?: string): AppThunk => async (dispatch,
         const accountIndex = state.wallet.highestAccountIndex + 1;
 
         // Generate account tag
-        const tagBytes = await masterSeed.deriveAccountTag(accountIndex);
-        const tagString = Buffer.from(tagBytes).toString('hex');
 
-
-        //generate the wots address
-        const accountSeed = await masterSeed.deriveAccountSeed(accountIndex);
-        const w = Derivation.deriveWotsSeedAndAddress(accountSeed, accountIndex, tagString);
+        const w = masterSeed.deriveAccount(accountIndex);
 
         const account: Account = {
             name: name || 'Account ' + (accountIndex + 1),
@@ -120,10 +115,10 @@ export const createAccountAction = (name?: string): AppThunk => async (dispatch,
             address: Buffer.from(w.address).toString('hex'),
             balance: '0',
             index: accountIndex,
-            tag: tagString,
+            tag: w.tag,
             source: 'mnemonic' as const,
             wotsIndex: 0,
-            seed: Buffer.from(accountSeed).toString('hex'),
+            seed: Buffer.from(w.seed).toString('hex'),
             order: Object.keys(state.accounts.accounts).length // Use index as initial order
         };
 
