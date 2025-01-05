@@ -14,6 +14,7 @@ import { MasterSeed } from '../../core/MasterSeed';
 import { SessionManager } from '../context/SessionContext';
 import { Account } from '../types/state';
 import { WOTS } from 'mochimo-wots-v2';
+import { EncryptedData } from '../../crypto/encryption';
 
 
 // Create new wallet
@@ -161,6 +162,57 @@ export const exportWalletJSONAction = (password: string): AppThunk => async (dis
     }
 };
 
+interface WalletJSON {
+    version: string;
+    timestamp: number;
+    encrypted: EncryptedData;
+    accounts: Record<string, Account>;
+}
+
+export const loadWalletJSONAction = (
+    walletJSON: WalletJSON,
+    password: string
+): AppThunk => async (dispatch) => {
+    try {
+        const storage = StorageProvider.getStorage();
+        const session = SessionManager.getInstance();
+
+        // Clear existing storage
+        await storage.clear();
+
+        // Save encrypted master seed
+        await storage.saveMasterSeed(walletJSON.encrypted);
+
+        // Unlock the wallet with new master seed
+        await session.unlock(password, storage);
+
+        // Save accounts to storage and get highest index
+        let highestIndex = -1;
+        await Promise.all(
+            Object.values(walletJSON.accounts).map(async (account) => {
+                await storage.saveAccount(account);
+                if (account.index !== undefined && account.index > highestIndex) {
+                    highestIndex = account.index;
+                }
+            })
+        );
+
+        // Save highest index
+        await storage.saveHighestIndex(highestIndex);
+
+        // Update Redux state
+        dispatch(bulkAddAccounts(walletJSON.accounts));
+        dispatch(setHighestIndex(highestIndex));
+        dispatch(setHasWallet(true));
+        dispatch(setLocked(false));
+        dispatch(setInitialized(true));
+
+    } catch (error) {
+        dispatch(setError('Failed to load wallet from JSON'));
+        throw error;
+    }
+};
+
 export const lockWalletAction = (): AppThunk => async (dispatch) => {
     const session = SessionManager.getInstance();
     session.lock();
@@ -174,12 +226,12 @@ export const setSelectedAccountAction = (
         const storage = StorageProvider.getStorage();
 
         if (accountId) {
+            // Update Redux state
+            dispatch(setSelectedAccount(accountId));
             // Save to storage
             await storage.saveActiveAccount(accountId);
         }
 
-        // Update Redux state
-        dispatch(setSelectedAccount(accountId));
     } catch (error) {
         dispatch(setError('Failed to set active account'));
         throw error;

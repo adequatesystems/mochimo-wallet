@@ -2,11 +2,12 @@ import { AppThunk } from '../store';
 import { addAccount, bulkAddAccounts, updateAccount } from '../slices/accountSlice';
 import { selectOrderedAccounts } from '../slices/accountSlice';
 import { AccountType } from '../../types/account';
-import { incrementHighestIndex } from '../slices/walletSlice';
+import {  setError } from '../slices/walletSlice';
 import { WOTS } from 'mochimo-wots-v2';
 import { DigestRandomGenerator } from '../../crypto/digestRandomGenerator';
 import { WOTSEntry } from '../../crypto/mcmDecoder';
 import { Account } from '../types/state';
+import { StorageProvider } from '../context/StorageContext';
 
 // Helper to get next ID based on max order
 function getNextId(accounts: Account[]): string {
@@ -38,49 +39,87 @@ function generateNextWOTSKey(seed: string, tag: string, wotsIndex: number) {
 
     return { address: Buffer.from(address).toString('hex') };
 }
+export const renameAccountAction = (
+    id: string,
+    name: string
+): AppThunk => async (dispatch) => {
+    const storage = StorageProvider.getStorage();
+    const accounts = await storage.loadAccounts();
+    const account = accounts.find((acc) => acc.tag === id);
+    if (!account) throw new Error('Account not found');
+    const updatedAccount = { ...account, name };
+    await storage.saveAccount(updatedAccount);
+    dispatch(updateAccount({ id, updates: { name } }));
+}
 
-// Action to update account's WOTS key
-export const updateAccountWOTS = (
-    accountId: string
-): AppThunk => async (dispatch, getState) => {
-    const state = getState();
-    const account = state.accounts.accounts[accountId];
+// Update account
+export const updateAccountAction = (
+    id: string,
+    updates: Partial<Account>
+): AppThunk => async (dispatch) => {
+    try {
+        const storage = StorageProvider.getStorage();
+        const accounts = await storage.loadAccounts();
+        const account = accounts.find((acc) => acc.tag === id);
 
-    if (!account) return;
-
-    if (account.source === 'mcm' && account.seed) {
-        // For imported accounts, use stored seed with next wotsIndex
-        const { address } = generateNextWOTSKey(
-            account.seed,
-            account.tag!,
-            account.wotsIndex
-        );
-
-        dispatch(updateAccount({
-            id: accountId,
-            updates: {
-                address,
-                wotsIndex: account.wotsIndex + 1
-            }
-        }));
+        if (!account) throw new Error('Account not found');
+        
+        const updatedAccount = { ...account, ...updates };
+        await storage.saveAccount(updatedAccount);
+        
+        dispatch(updateAccount({ id, updates }));
+    } catch (error) {
+        dispatch(setError('Failed to update account'));
+        throw error;
     }
-    // Handle HD wallet accounts separately...
 };
 
-// Modified import action
-export const importMCMAccount = (
+// Update WOTS key
+export const updateAccountWOTSAction = (
+    accountId: string
+): AppThunk => async (dispatch, getState) => {
+    try {
+        const state = getState();
+        const account = state.accounts.accounts[accountId];
+        const storage = StorageProvider.getStorage();
+
+        if (!account) return;
+
+        if (account.source === 'mcm' && account.seed) {
+            const { address } = generateNextWOTSKey(
+                account.seed,
+                account.tag,
+                account.wotsIndex
+            );
+
+            const updates = {
+                address,
+                wotsIndex: account.wotsIndex + 1
+            };
+
+            await storage.saveAccount({ ...account, ...updates });
+            dispatch(updateAccount({ id: accountId, updates }));
+        }
+    } catch (error) {
+        dispatch(setError('Failed to update WOTS key'));
+        throw error;
+    }
+};
+
+// Import MCM account
+export const importMCMAccountAction = (
     name: string,
     address: string,
     seed: string,
     tag: string,
     wotsIndex: number
 ): AppThunk => async (dispatch, getState) => {
-    const accounts = selectOrderedAccounts(getState());
-    const id = getNextId(accounts);
+    try {
+        const storage = StorageProvider.getStorage();
+        const accounts = selectOrderedAccounts(getState());
+        const id = getNextId(accounts);
 
-    dispatch(addAccount({
-        id,
-        account: {
+        const account: Account = {
             name,
             type: 'imported',
             address,
@@ -90,8 +129,52 @@ export const importMCMAccount = (
             source: 'mcm',
             order: parseInt(id),
             wotsIndex
-        }
-    }));
+        };
+
+        await storage.saveAccount(account);
+        dispatch(addAccount({ id, account }));
+    } catch (error) {
+        dispatch(setError('Failed to import account'));
+        throw error;
+    }
+};
+
+// Bulk import MCM accounts
+export const bulkImportMCMAccountsAction = (
+    accounts: MCMAccountImport[]
+): AppThunk => async (dispatch, getState) => {
+    try {
+        const storage = StorageProvider.getStorage();
+        const existingAccounts = selectOrderedAccounts(getState());
+        const startId = getNextId(existingAccounts);
+        const startOrder = parseInt(startId);
+
+        const accountEntries: Record<string, Account> = {};
+
+        // Create and save accounts
+        await Promise.all(accounts.map(async (account, i) => {
+            const id = (startOrder + i).toString();
+            const newAccount: Account = {
+                name: account.name,
+                type: 'imported',
+                address: account.address,
+                balance: '0',
+                tag: account.tag,
+                seed: account.seed,
+                source: 'mcm',
+                order: startOrder + i,
+                wotsIndex: account.wotsIndex
+            };
+
+            await storage.saveAccount(newAccount);
+            accountEntries[id] = newAccount;
+        }));
+
+        dispatch(bulkAddAccounts(accountEntries));
+    } catch (error) {
+        dispatch(setError('Failed to import accounts'));
+        throw error;
+    }
 };
 
 export interface MCMAccountImport {
@@ -101,35 +184,6 @@ export interface MCMAccountImport {
     tag: string;
     wotsIndex: number;
 }
-
-export const bulkImportMCMAccounts = (
-    accounts: MCMAccountImport[]
-): AppThunk => async (dispatch, getState) => {
-    const existingAccounts = selectOrderedAccounts(getState());
-    const startId = getNextId(existingAccounts);
-    const startOrder = parseInt(startId);
-
-    const accountEntries: Record<string, Account> = Object.create(null);
-
-    // Use sequential IDs/orders
-    for (let i = 0; i < accounts.length; i++) {
-        const account = accounts[i];
-        const id = (startOrder + i).toString();
-        accountEntries[id] = {
-            name: account.name,
-            type: 'imported',
-            address: account.address,
-            balance: '0',
-            tag: account.tag,
-            seed: account.seed,
-            source: 'mcm',
-            order: startOrder + i,
-            wotsIndex: account.wotsIndex
-        };
-    }
-
-    dispatch(bulkAddAccounts(accountEntries));
-};
 
 // Helper to convert MCM entries to importable accounts
 export const convertMCMEntries = (entries: WOTSEntry[]): MCMAccountImport[] => {
