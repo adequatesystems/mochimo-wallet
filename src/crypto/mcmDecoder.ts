@@ -3,7 +3,7 @@ import { inflate } from 'pako';
 import crypto from 'crypto';
 import forge from 'node-forge';
 import { WOTS, WOTSWallet } from 'mochimo-wots-v2';
-import { DigestRandomGenerator } from './digestRandomGenerator';
+import { DigestRandomGenerator, wordArrayToBytes } from './digestRandomGenerator';
 
 export interface PublicHeader {
     'pbkdf2 salt': string;
@@ -236,21 +236,12 @@ function intToBytes(num: number): number[] {
     ];
 }
 
-function wordArrayToBytes(wordArray: any): number[] {
-    const words = wordArray.words;
-    const bytes = [];
-    for (let i = 0; i < words.length * 4; i++) {
-        bytes.push((words[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff);
-    }
-    return bytes;
-}
 
 
 
 export function deterministicAccountSecret(
     deterministicSeed: Uint8Array,
     id: number,
-
 ): { secret: Uint8Array, prng: DigestRandomGenerator } {
     const idBytes = intToBytes(id);
     const input = [...deterministicSeed, ...idBytes];

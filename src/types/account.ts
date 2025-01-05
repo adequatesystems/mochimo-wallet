@@ -1,29 +1,16 @@
-export interface AccountData {
+export type NetworkType = 'mainnet' | 'testnet' | 'devnet';
+
+export type AccountType = 'standard' | 'imported' | 'hardware';
+
+export interface Account {
     name: string;
-    index: number;
-    tag: string;  // hex tag
+    type: AccountType;
+    address: string;
+    balance: string;
+    tag?: string;
+    index?: number;
+    source?: 'mnemonic' | 'mcm';
+    order?: number;
     wotsIndex: number;
-}
-
-export class Account {
-    readonly name: string;
-    readonly index: number;
-    readonly tag: string;
-    wotsIndex: number;
-
-    constructor(data: AccountData) {
-        this.name = data.name;
-        this.index = data.index;
-        this.tag = data.tag;
-        this.wotsIndex = data.wotsIndex;
-    }
-
-    toJSON(): AccountData {
-        return {
-            name: this.name,
-            index: this.index,
-            tag: this.tag,
-            wotsIndex: this.wotsIndex
-        };
-    }
+    seed?: string;
 } 

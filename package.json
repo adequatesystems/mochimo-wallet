@@ -31,6 +31,7 @@
     "react-dom": ">=16.8.0"
   },
   "dependencies": {
+    "@reduxjs/toolkit": "^2.5.0",
     "@scure/bip39": "^1.2.2",
     "crypto-js": "^4.2.0",
     "mochimo-wots-v2": "^0.1.2",
