@@ -10,11 +10,10 @@ import {
 import { addAccount, bulkAddAccounts, setSelectedAccount } from '../slices/accountSlice';
 import { HDWallet } from '../../core/HDWallet';
 import { StorageProvider } from '../context/StorageContext';
-import { MasterSeed } from '../../core/MasterSeed';
 import { SessionManager } from '../context/SessionContext';
 import { Account } from '../types/state';
-import { WOTS } from 'mochimo-wots-v2';
 import { EncryptedData } from '../../crypto/encryption';
+import { Derivation } from '../utils/derivation';
 
 
 // Create new wallet
@@ -100,20 +99,12 @@ export const createAccountAction = (name?: string): AppThunk => async (dispatch,
 
         //generate the wots address
         const accountSeed = await masterSeed.deriveAccountSeed(accountIndex);
-        const wotsSeed = MasterSeed.deriveSeed(accountSeed, accountIndex);
-
-        const address = WOTS.generateRandomAddress_(tagBytes, wotsSeed.secret, (bytes) => {
-            if (wotsSeed.prng) {
-                const len = bytes.length;
-                const randomBytes = wotsSeed.prng.nextBytes(len);
-                bytes.set(randomBytes);
-            }
-        });
+        const w = Derivation.deriveWotsSeedAndAddress(accountSeed, accountIndex, tagString);
 
         const account: Account = {
             name: name || 'Account ' + (accountIndex + 1),
             type: 'standard' as const,
-            address: Buffer.from(address).toString('hex'),
+            address: Buffer.from(w.address).toString('hex'),
             balance: '0',
             index: accountIndex,
             tag: tagString,

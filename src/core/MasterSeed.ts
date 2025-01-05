@@ -186,32 +186,8 @@ export class MasterSeed {
             throw new Error('Failed to decrypt master seed - invalid password');
         }
     }
-    static deriveSeed(
-        deterministicSeed: Uint8Array,
-        id: number,
-    ): { secret: Uint8Array, prng: DigestRandomGenerator } {
-        const idBytes = intToBytes(id);
-        const input = [...deterministicSeed, ...idBytes];
-        const wordArray = CryptoJS.lib.WordArray.create(new Uint8Array(input));
-        const localSeedArray = CryptoJS.SHA512(wordArray);
-        const localSeed = wordArrayToBytes(localSeedArray);
-        const prng = new DigestRandomGenerator();
-        prng.addSeedMaterial(localSeed);
-        const secret = new Uint8Array(prng.nextBytes(32));
-
-
-        return { secret, prng };
-    }
+    
 
 
 
-}
-
-function intToBytes(num: number): number[] {
-    return [
-        (num >> 24) & 0xff,
-        (num >> 16) & 0xff,
-        (num >> 8) & 0xff,
-        num & 0xff
-    ];
 }
