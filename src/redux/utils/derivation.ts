@@ -1,4 +1,3 @@
-import { MasterSeed } from "@/core/MasterSeed";
 import { DigestRandomGenerator, wordArrayToBytes } from '../../crypto/digestRandomGenerator';
 import { WOTS } from "mochimo-wots-v2";
 import CryptoJS from 'crypto-js';
@@ -68,22 +67,3 @@ export class Derivation {
     }
 }
 
-export function generateNextWOTSKey(seed: string, tag: string, wotsIndex: number) {
-    const seedBytes = Buffer.from(seed, 'hex');
-    const tagBytes = Buffer.from(tag, 'hex');
-
-    // Pre-allocate random bytes
-    const prng = new DigestRandomGenerator();
-    prng.addSeedMaterial(seedBytes);
-
-    // Pre-allocate buffer for random bytes
-    const randomBuffer = prng.nextBytes(32 * 256);
-    let offset = 0;
-
-    const address = WOTS.generateRandomAddress_(tagBytes, seedBytes, (bytes) => {
-        bytes.set(randomBuffer.subarray(offset, offset + bytes.length));
-        offset += bytes.length;
-    });
-
-    return { address: Buffer.from(address).toString('hex') };
-}   

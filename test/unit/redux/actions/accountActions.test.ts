@@ -4,9 +4,10 @@ import { StorageProvider } from '../../../../src/redux/context/StorageContext';
 import { configureStore } from '@reduxjs/toolkit';
 import walletReducer from '../../../../src/redux/slices/walletSlice';
 import accountReducer from '../../../../src/redux/slices/accountSlice';
-import type { RootState } from '../../../../src/redux/store';
-import type { Store, AnyAction } from '@reduxjs/toolkit';
-import { ThunkDispatch } from 'redux-thunk';
+import type { AppStore, RootState } from '../../../../src/redux/store';
+import type { Store, Dispatch, Action } from '@reduxjs/toolkit';
+import type { AppDispatch } from '../../../../src/redux/store';
+
 import {
     updateAccountAction,
     updateAccountWOTSAction,
@@ -19,9 +20,7 @@ import {
 import { createWalletAction, unlockWalletAction, createAccountAction } from '../../../../src/redux/actions/walletActions';
 
 describe('Account Actions', () => {
-    let store: Store<RootState> & {
-        dispatch: ThunkDispatch<RootState, unknown, AnyAction>;
-    };
+    let store: AppStore;
     let mockStorage: MockStorage;
     const testPassword = 'testpassword';
 

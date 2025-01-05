@@ -1,4 +1,4 @@
-import { AppThunk } from '../store';
+
 import {
     setInitialized,
     setLocked,
@@ -14,13 +14,14 @@ import { SessionManager } from '../context/SessionContext';
 import { Account } from '../../types/account';
 import { EncryptedData } from '../../crypto/encryption';
 import { MasterSeed } from '../../core/MasterSeed';
+import { AppThunk } from '../store';
 
 
 // Create new wallet
 export const createWalletAction = (
     password: string,
     mnemonic?: string
-): AppThunk => async (dispatch) => {
+): AppThunk<string> => async (dispatch) => {
     try {
         if (!password) {
             throw new Error('Password is required');
@@ -94,7 +95,7 @@ export const unlockWalletAction = (password: string): AppThunk => async (dispatc
 };
 
 // Create account
-export const createAccountAction = (name?: string): AppThunk => async (dispatch, getState) => {
+export const createAccountAction = (name?: string): AppThunk<Account> => async (dispatch, getState) => {
     try {
         const storage = StorageProvider.getStorage();
         const session = SessionManager.getInstance();
@@ -139,7 +140,7 @@ export const createAccountAction = (name?: string): AppThunk => async (dispatch,
 };
 
 // Export wallet
-export const exportWalletJSONAction = (password: string): AppThunk => async (dispatch, getState) => {
+export const exportWalletJSONAction = (password: string): AppThunk<WalletJSON> => async (dispatch, getState) => {
     try {
         const state = getState();
         const session = SessionManager.getInstance();
@@ -170,7 +171,7 @@ interface WalletJSON {
 export const loadWalletJSONAction = (
     walletJSON: WalletJSON,
     password: string
-): AppThunk => async (dispatch) => {
+): AppThunk<void> => async (dispatch) => {
     try {
         const storage = StorageProvider.getStorage();
         const session = SessionManager.getInstance();
@@ -211,7 +212,7 @@ export const loadWalletJSONAction = (
     }
 };
 
-export const lockWalletAction = (): AppThunk => async (dispatch) => {
+export const lockWalletAction = (): AppThunk<void> => async (dispatch) => {
     const session = SessionManager.getInstance();
     session.lock();
     dispatch(setLocked(true));
@@ -219,7 +220,7 @@ export const lockWalletAction = (): AppThunk => async (dispatch) => {
 
 export const setSelectedAccountAction = (
     accountId: string | null
-): AppThunk => async (dispatch) => {
+): AppThunk<void> => async (dispatch) => {
     try {
         const storage = StorageProvider.getStorage();
 

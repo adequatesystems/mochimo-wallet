@@ -7,7 +7,7 @@ export interface Account {
     type: AccountType;
     address: string;
     balance: string;
-    tag?: string;
+    tag: string;
     index?: number;
     source?: 'mnemonic' | 'mcm';
     order?: number;

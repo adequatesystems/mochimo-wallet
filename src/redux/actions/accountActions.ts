@@ -2,8 +2,8 @@ import { AppThunk } from '../store';
 import { addAccount, bulkAddAccounts, updateAccount, removeAccount, reorderAccounts } from '../slices/accountSlice';
 import { setError } from '../slices/walletSlice';
 import { StorageProvider } from '../context/StorageContext';
-import { Account } from '../../types/Account';
-import { generateNextWOTSKey } from '../utils/derivation';
+import { Account } from '../../types/account';
+import { Derivation } from '../utils/derivation';
 
 // Update account
 export const updateAccountAction = (
@@ -47,14 +47,14 @@ export const updateAccountWOTSAction = (
         if (account.wotsIndex < 0) throw new Error('Invalid wots index');
 
         if (account.source === 'mcm' && account.seed) {
-            const { address } = generateNextWOTSKey(
-                account.seed,
-                account.tag,
-                account.wotsIndex
+            const { address } = Derivation.deriveWotsSeedAndAddress(
+                Buffer.from(account.seed, 'hex'),
+                account.wotsIndex,
+                account.tag
             );
 
             const updates = {
-                address,
+                address: Buffer.from(address).toString('hex'),
                 wotsIndex: account.wotsIndex + 1
             };
 
@@ -73,7 +73,7 @@ export const importMCMAccountAction = (
     seed: string,
     tag: string,
     wotsIndex: number
-): AppThunk => async (dispatch, getState) => {
+): AppThunk<Account> => async (dispatch, getState) => {
     try {
         // Validate tag length
         if (tag.length !== 24) {
