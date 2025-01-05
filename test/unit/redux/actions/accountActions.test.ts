@@ -4,6 +4,8 @@ import { StorageProvider } from '../../../../src/redux/context/StorageContext';
 import { configureStore } from '@reduxjs/toolkit';
 import walletReducer from '../../../../src/redux/slices/walletSlice';
 import accountReducer from '../../../../src/redux/slices/accountSlice';
+import type { RootState } from '../../../../src/redux/store';
+import type { Store } from '@reduxjs/toolkit';
 import {
     updateAccountAction,
     updateAccountWOTSAction,
@@ -14,7 +16,7 @@ import {
 import { createWalletAction, unlockWalletAction, createAccountAction } from '../../../../src/redux/actions/walletActions';
 
 describe('Account Actions', () => {
-    let store: any;
+    let store: Store<RootState>;
     let mockStorage: MockStorage;
     const testPassword = 'testpassword';
 
