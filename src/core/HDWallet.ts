@@ -1,7 +1,7 @@
 import { MasterSeed } from './MasterSeed';
 import { Transaction } from 'mochimo-wots-v2';
 import { WOTSWallet } from 'mochimo-wots-v2';
-import { Account, AccountData } from '../types/account';
+import { Account } from '../types/account';
 import { Storage } from '../types/storage';
 import { WalletExport } from '../types/wallet';
 import { StorageFactory } from '../storage/StorageFactory';
@@ -35,9 +35,13 @@ export class HDWallet {
     /**
      * Creates a new HD wallet with a fresh master seed
      */
-    static async create(password: string, options?: HDWalletOptions): Promise<HDWallet> {
+    static async create(password: string, mnemonic?: string, options?: HDWalletOptions): Promise<HDWallet> {
         const wallet = new HDWallet(options);
-        wallet.masterSeed = await MasterSeed.create();
+        if (mnemonic) {
+            wallet.masterSeed = await MasterSeed.fromPhrase(mnemonic);
+        } else {
+            wallet.masterSeed = await MasterSeed.create();
+        }
 
         // Encrypt and store if storage is provided
         if (wallet.storage) {
@@ -65,7 +69,7 @@ export class HDWallet {
             // Load accounts from storage
             const accounts = await storage.loadAccounts();
             for (const accountData of accounts) {
-                wallet.accounts.set(accountData.tag, new Account(accountData));
+                wallet.accounts.set(accountData.tag, (accountData));
             }
             return wallet;
 
@@ -88,7 +92,7 @@ export class HDWallet {
         const tagString = Buffer.from(tag).toString('hex');
 
         // Create account data
-        const accountData: AccountData = {
+        const accountData: Account = {
             name,
             index: accountIndex,
             tag: tagString,
@@ -96,15 +100,14 @@ export class HDWallet {
         };
 
         // Create and store account
-        const account = new Account(accountData);
-        this.accounts.set(tagString, account);
+        this.accounts.set(tagString, accountData);
 
         // Save to storage if available
         if (this.storage) {
             await this.storage.saveAccount(accountData);
         }
 
-        return account;
+        return accountData;
     }
 
     /**
@@ -280,7 +283,7 @@ export class HDWallet {
      */
     static async createWithStorage(password: string, prefix?: string): Promise<HDWallet> {
         const storage = StorageFactory.create(prefix);
-        return HDWallet.create(password, { storage });
+        return HDWallet.create(password, undefined, { storage });
     }
 
     /**

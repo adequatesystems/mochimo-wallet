@@ -1,11 +1,12 @@
 import { AppThunk } from '../store';
 import { addAccount, bulkAddAccounts, updateAccount } from '../slices/accountSlice';
 import { selectOrderedAccounts } from '../slices/accountSlice';
-import { Account, AccountType } from '../../types/account';
+import { AccountType } from '../../types/account';
 import { incrementHighestIndex } from '../slices/walletSlice';
 import { WOTS } from 'mochimo-wots-v2';
 import { DigestRandomGenerator } from '../../crypto/digestRandomGenerator';
 import { WOTSEntry } from '../../crypto/mcmDecoder';
+import { Account } from '../types/state';
 
 // Helper to get next ID based on max order
 function getNextId(accounts: Account[]): string {
@@ -15,32 +16,7 @@ function getNextId(accounts: Account[]): string {
     return (maxOrder + 1).toString();
 }
 
-export const createAccount = (
-    name: string,
-    type: AccountType,
-): AppThunk => async (dispatch, getState) => {
-    const accounts = selectOrderedAccounts(getState());
-    const id = getNextId(accounts);
-    
-    const state = getState();
-    const nextIndex = state.wallet.highestAccountIndex + 1;
-    
-    dispatch(addAccount({
-        id,
-        account: {
-            name,
-            type,
-            index: nextIndex,
-            order: parseInt(id),
-            address: '',
-            balance: '0',
-            source: 'mnemonic',
-            wotsIndex: 0
-        }
-    }));
-    
-    dispatch(incrementHighestIndex());
-};
+
 
 // Helper to generate next WOTS key for imported account
 function generateNextWOTSKey(seed: string, tag: string, wotsIndex: number) {
@@ -162,6 +138,6 @@ export const convertMCMEntries = (entries: WOTSEntry[]): MCMAccountImport[] => {
         address: entry.address,
         seed: entry.secret,
         tag: entry.address.slice(-24), // Last 24 bytes of address
-        wotsIndex: 0 // Start fresh or get from MCM if available
+        wotsIndex: -1 // -1 means the account was just imported and next wots index will be 0. current wots index will not be used to generate the wots seed and public key
     }));
 }; 

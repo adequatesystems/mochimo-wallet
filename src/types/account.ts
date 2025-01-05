@@ -2,15 +2,15 @@ export type NetworkType = 'mainnet' | 'testnet' | 'devnet';
 
 export type AccountType = 'standard' | 'imported' | 'hardware';
 
-export interface Account {
-    name: string;
-    type: AccountType;
-    address: string;
-    balance: string;
-    tag?: string;
-    index?: number;
-    source?: 'mnemonic' | 'mcm';
-    order?: number;
-    wotsIndex: number;
-    seed?: string;
-} 
+// export interface Account {
+//     name: string;
+//     type: AccountType;
+//     address: string;
+//     balance: string;
+//     tag?: string;
+//     index?: number;
+//     source?: 'mnemonic' | 'mcm';
+//     order?: number;
+//     wotsIndex: number;
+//     seed?: string;
+// } 

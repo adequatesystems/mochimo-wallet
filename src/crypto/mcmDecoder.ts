@@ -96,7 +96,7 @@ export class MCMDecoder {
     }
 
     public static generateDeterministicSecret(deterministicSeed: Uint8Array, id: number, tag: string): { secret: Uint8Array, address: Uint8Array } {
-        const secret = deterministicAccountSecret(deterministicSeed, id);
+        const secret = deriveSecret(deterministicSeed, id);
         const tagBytes = Buffer.from(tag, 'hex');
         console.log('Tag:', tag, 'TagBytes:', tagBytes.length);
         const address = WOTS.generateRandomAddress_(tagBytes, secret.secret, (bytes) => {
@@ -239,7 +239,7 @@ function intToBytes(num: number): number[] {
 
 
 
-export function deterministicAccountSecret(
+export function deriveSecret(
     deterministicSeed: Uint8Array,
     id: number,
 ): { secret: Uint8Array, prng: DigestRandomGenerator } {

@@ -137,6 +137,7 @@ export async function createWOTSWallet(
 
 
     try {
+
         return WOTSWallet.create(name, wotsSeed, tag);
     } finally {
         // Clean up the secret after wallet creation
@@ -197,11 +198,11 @@ export async function deriveKeyCrypto(
 /**
  * Fast key derivation implementation
  */
-export async function deriveKeyFast(
+export  function deriveKeyFast(
     masterSeed: Uint8Array,
     index: number,
     params: KDFParams
-): Promise<Uint8Array> {
+): Uint8Array {
     const encoder = new TextEncoder();
     const indexBytes = encoder.encode(index.toString());
 

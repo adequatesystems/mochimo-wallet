@@ -1,14 +1,16 @@
 import { EncryptedData } from '../crypto/encryption';
-import { AccountData } from './account';
+import { Account } from './account';
 
 export interface Storage {
     saveMasterSeed(encrypted: EncryptedData): Promise<void>;
     loadMasterSeed(): Promise<EncryptedData | null>;
-    saveAccount(account: AccountData): Promise<void>;
-    loadAccounts(): Promise<AccountData[]>;
+    saveAccount(account: Account): Promise<void>;
+    loadAccounts(): Promise<Account[]>;
     clear(): Promise<void>;
-    saveActiveAccount(account: AccountData): Promise<void>;
-    loadActiveAccount(): Promise<AccountData | null>;
+    saveActiveAccount(account: Account): Promise<void>;
+    loadActiveAccount(): Promise<string | null>;
+    saveHighestIndex(index: number): Promise<void>;
+    loadHighestIndex(): Promise<number>;
 }
 
 // Extension storage types

@@ -7,6 +7,7 @@ export interface WalletState {
     network: NetworkType;
     error: string | null;
     highestAccountIndex: number;
+    activeAccount: string | null;
 }
 
 export interface Account {
@@ -14,7 +15,7 @@ export interface Account {
     type: AccountType;
     address: string;
     balance: string;
-    tag?: string;
+    tag: string;
     index?: number;  // Required for HD wallet accounts (account index)
     seed?: string;   // Required for imported accounts (MCM)
     source: 'mnemonic' | 'mcm';

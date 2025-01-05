@@ -5,6 +5,7 @@ import { encrypt, decrypt, EncryptedData } from '../crypto/encryption';
 
 import * as bip39 from '@scure/bip39';
 import { wordlist } from '@scure/bip39/wordlists/english';
+import { DigestRandomGenerator, wordArrayToBytes } from '@/crypto/digestRandomGenerator';
 
 export interface EncryptedSeed {
     data: string;      // Base64 encrypted seed
@@ -45,11 +46,11 @@ export class MasterSeed {
 
             // Convert phrase to entropy first
             const entropy = bip39.mnemonicToEntropy(phrase, wordlist);
-            
+
             // Then convert to seed
             const seed = await bip39.mnemonicToSeed(phrase);
             const masterSeed = new Uint8Array(seed.slice(0, 32));
-            
+
             // Store both seed and original entropy
             return new MasterSeed(masterSeed, entropy);
         } catch (error) {
@@ -68,13 +69,13 @@ export class MasterSeed {
         if (!this.seed) {
             throw new Error('Master seed is locked / does not exist');
         }
-        
+
         try {
             // If we have original entropy, use it
             if (this.entropy) {
                 return bip39.entropyToMnemonic(this.entropy, wordlist);
             }
-            
+
             // Otherwise generate new entropy from seed
             const entropy = new Uint8Array(32);
             entropy.set(this.seed);
@@ -177,7 +178,7 @@ export class MasterSeed {
             if (seed.length !== 32) {
                 throw new Error('Invalid seed length');
             }
-            
+
             const instance = new MasterSeed(seed);
             instance._isLocked = false;
             return instance;
@@ -185,4 +186,32 @@ export class MasterSeed {
             throw new Error('Failed to decrypt master seed - invalid password');
         }
     }
-} 
+    static deriveSeed(
+        deterministicSeed: Uint8Array,
+        id: number,
+    ): { secret: Uint8Array, prng: DigestRandomGenerator } {
+        const idBytes = intToBytes(id);
+        const input = [...deterministicSeed, ...idBytes];
+        const wordArray = CryptoJS.lib.WordArray.create(new Uint8Array(input));
+        const localSeedArray = CryptoJS.SHA512(wordArray);
+        const localSeed = wordArrayToBytes(localSeedArray);
+        const prng = new DigestRandomGenerator();
+        prng.addSeedMaterial(localSeed);
+        const secret = new Uint8Array(prng.nextBytes(32));
+
+
+        return { secret, prng };
+    }
+
+
+
+}
+
+function intToBytes(num: number): number[] {
+    return [
+        (num >> 24) & 0xff,
+        (num >> 16) & 0xff,
+        (num >> 8) & 0xff,
+        num & 0xff
+    ];
+}

@@ -8,7 +8,8 @@ const initialState: WalletState = {
     hasWallet: false,
     network: 'mainnet',
     error: null,
-    highestAccountIndex: -1
+    highestAccountIndex: -1,
+    activeAccount: null
 };
 
 const walletSlice = createSlice({
@@ -36,6 +37,9 @@ const walletSlice = createSlice({
         },
         setHighestIndex: (state, action: PayloadAction<number>) => {
             state.highestAccountIndex = action.payload;
+        },
+        setActiveAccount: (state, action: PayloadAction<string | null>) => {
+            state.activeAccount = action.payload;
         }
     }
 });
@@ -48,7 +52,8 @@ export const {
     setError,
     reset,
     incrementHighestIndex,
-    setHighestIndex
+    setHighestIndex,
+    setActiveAccount
 } = walletSlice.actions;
 
 export default walletSlice.reducer; 

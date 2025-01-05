@@ -124,7 +124,7 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
             // Save first account as active if exists
             const accounts = wallet.getAccounts()
             if (accounts.length > 0) {
-                await wallet.storage?.saveActiveAccount(accounts[0].toJSON())
+                await wallet.storage?.saveActiveAccount(accounts[0])
                 set({ activeAccount: accounts[0] })
             }
 
