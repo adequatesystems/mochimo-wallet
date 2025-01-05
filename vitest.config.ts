@@ -1,15 +1,22 @@
 import { defineConfig } from 'vitest/config';
+import react from '@vitejs/plugin-react';
+import path from 'path';
 
 export default defineConfig({
+    plugins: [react()],
     test: {
-        environment: 'node',
         globals: true,
-        include: ['test/**/*.test.ts'],
-        setupFiles: ['test/setup.ts'],
-        server: {
-            deps: {
-                inline: [/mochimo-wots-v2/, /@scure\/bip39/]
-            }
+        environment: 'jsdom',
+        setupFiles: ['./test/setup.ts'],
+        include: ['test/**/*.{test,spec}.{js,jsx,ts,tsx}'],
+        alias: {
+            '@': path.resolve(__dirname, './src')
+        },
+        deps: {
+            inline: [
+                'mochimo-wots-v2',
+                '@scure/bip39'
+            ]
         }
     }
 }); 
