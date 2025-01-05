@@ -1,6 +1,6 @@
 import CryptoJS from 'crypto-js';
 
-function intToBytes(num: number): Uint8Array {
+export function intToBytes(num: number): Uint8Array {
     return new Uint8Array([
         (num >> 24) & 0xff,
         (num >> 16) & 0xff,

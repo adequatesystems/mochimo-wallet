@@ -13,7 +13,7 @@ const TEST_MNEMONIC = 'abandon abandon abandon abandon abandon abandon abandon a
 
 describe('useWallet', () => {
     let store: ReturnType<typeof configureStore>;
-    
+
     beforeEach(() => {
         store = configureStore({
             reducer: {
@@ -30,7 +30,7 @@ describe('useWallet', () => {
     describe('initialization', () => {
         it('should initialize with default state', () => {
             const { result } = renderHook(() => useWallet(), { wrapper });
-            
+
             expect(result.current.isLocked).toBe(true);
             expect(result.current.hasWallet).toBe(false);
             expect(result.current.isInitialized).toBe(false);
@@ -43,9 +43,8 @@ describe('useWallet', () => {
         it('should create wallet with new mnemonic', async () => {
             const { result } = renderHook(() => useWallet(), { wrapper });
 
-            let mnemonic: string;
-            await act(async () => {
-                mnemonic = await result.current.createWallet('password123');
+            let mnemonic: string = await act(async () => {
+                return await result.current.createWallet('password123');
             });
 
             expect(mnemonic).toBeDefined();
@@ -53,7 +52,7 @@ describe('useWallet', () => {
             expect(mnemonic.split(' ').length).toBe(24); // BIP39 24-word mnemonic
             expect(result.current.hasWallet).toBe(true);
             expect(result.current.isLocked).toBe(true);
-            
+
             // Verify mnemonic words are from BIP39 wordlist
             expect(mnemonic.split(' ').every(word => wordlist.includes(word))).toBe(true);
         });

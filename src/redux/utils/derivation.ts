@@ -1,14 +1,7 @@
-import { DigestRandomGenerator, wordArrayToBytes } from '../../crypto/digestRandomGenerator';
+import { DigestRandomGenerator, intToBytes, wordArrayToBytes } from '../../crypto/digestRandomGenerator';
 import { WOTS } from "mochimo-wots-v2";
 import CryptoJS from 'crypto-js';
-function intToBytes(num: number): number[] {
-    return [
-        (num >> 24) & 0xff,
-        (num >> 16) & 0xff,
-        (num >> 8) & 0xff,
-        num & 0xff
-    ];
-}
+
 export class Derivation {
     public static deriveAccountTag(masterSeed: Uint8Array, accountIndex: number): Uint8Array {
         // First generate the WOTS public key
@@ -17,7 +10,6 @@ export class Derivation {
         //create first wots address
         const { address } = this.deriveWotsSeedAndAddress(secret, 0, Buffer.from(tagBytes).toString('hex'));
         // Generate WOTS public key
-        const wotsPK = address
         // Hash the public key with SHA3-512
         const sha3Hash = CryptoJS.SHA3(
             CryptoJS.lib.WordArray.create(address),

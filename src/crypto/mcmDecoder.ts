@@ -1,9 +1,7 @@
 import CryptoJS from 'crypto-js';
 import { inflate } from 'pako';
-import crypto from 'crypto';
-import forge from 'node-forge';
 import { WOTS, WOTSWallet } from 'mochimo-wots-v2';
-import { DigestRandomGenerator, wordArrayToBytes } from './digestRandomGenerator';
+import { DigestRandomGenerator, intToBytes, wordArrayToBytes } from './digestRandomGenerator';
 
 export interface PublicHeader {
     'pbkdf2 salt': string;
@@ -224,17 +222,6 @@ export class MCMDecoder {
     }
 }
 
-
-
-
-function intToBytes(num: number): number[] {
-    return [
-        (num >> 24) & 0xff,
-        (num >> 16) & 0xff,
-        (num >> 8) & 0xff,
-        num & 0xff
-    ];
-}
 
 
 
