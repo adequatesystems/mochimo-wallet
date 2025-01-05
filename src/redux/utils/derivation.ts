@@ -1,7 +1,7 @@
 import { MasterSeed } from "@/core/MasterSeed";
-import { DigestRandomGenerator, wordArrayToBytes } from "@/crypto/digestRandomGenerator";
+import { DigestRandomGenerator, wordArrayToBytes } from '../../crypto/digestRandomGenerator';
 import { WOTS } from "mochimo-wots-v2";
-
+import CryptoJS from 'crypto-js';
 function intToBytes(num: number): number[] {
     return [
         (num >> 24) & 0xff,

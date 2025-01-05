@@ -14,6 +14,7 @@ import { SessionManager } from '../context/SessionContext';
 import { Account } from '../types/state';
 import { EncryptedData } from '../../crypto/encryption';
 import { Derivation } from '../utils/derivation';
+import { MasterSeed } from '../../core/MasterSeed';
 
 
 // Create new wallet
@@ -22,14 +23,26 @@ export const createWalletAction = (
     mnemonic?: string
 ): AppThunk => async (dispatch) => {
     try {
+        if (!password) {
+            throw new Error('Password is required');
+        }
+
         const storage = StorageProvider.getStorage();
-        await HDWallet.create(password, mnemonic, { storage });
+        const masterSeed = mnemonic 
+            ? await MasterSeed.fromPhrase(mnemonic)
+            : await MasterSeed.create();
+
+        // Encrypt and save master seed
+        const encrypted = await masterSeed.export(password);
+        await storage.saveMasterSeed(encrypted);
+
+        // Get mnemonic for backup
+        const seedPhrase = await masterSeed.toPhrase();
 
         dispatch(setHasWallet(true));
-        dispatch(setLocked(false));
         dispatch(setInitialized(true));
 
-        return mnemonic;
+        return seedPhrase;
     } catch (error) {
         dispatch(setError(error instanceof Error ? error.message : 'Failed to create wallet'));
         throw error;

@@ -1,45 +1,59 @@
 import { Storage } from '../../src/types/storage';
+import { Account } from '../../src/redux/types/state';
 import { EncryptedData } from '../../src/crypto/encryption';
-import { AccountData } from '../../src/types/account';
 
 export class MockStorage implements Storage {
-    private masterSeed?: EncryptedData;
-    private accounts: AccountData[] = [];
-    private activeAccount?: AccountData;
-
-    async clear(): Promise<void> {
-        this.masterSeed = undefined;
-        this.accounts = [];
-        this.activeAccount = undefined;
-        return Promise.resolve();
-    }
+    private data: {
+        masterSeed?: EncryptedData;
+        accounts: Account[];
+        activeAccount?: string;
+        highestIndex: number;
+    } = {
+        accounts: [],
+        highestIndex: -1
+    };
 
     async saveMasterSeed(encrypted: EncryptedData): Promise<void> {
-        this.masterSeed = encrypted;
+        this.data.masterSeed = encrypted;
     }
 
     async loadMasterSeed(): Promise<EncryptedData | null> {
-        return this.masterSeed || null;
+        return this.data.masterSeed || null;
     }
 
-    async saveAccount(account: AccountData): Promise<void> {
-        const index = this.accounts.findIndex(a => a.tag === account.tag);
+    async saveAccount(account: Account): Promise<void> {
+        const index = this.data.accounts.findIndex(a => a.tag === account.tag);
         if (index >= 0) {
-            this.accounts[index] = account;
+            this.data.accounts[index] = account;
         } else {
-            this.accounts.push(account);
+            this.data.accounts.push(account);
         }
     }
 
-    async loadAccounts(): Promise<AccountData[]> {
-        return this.accounts;
+    async loadAccounts(): Promise<Account[]> {
+        return this.data.accounts;
     }
 
-    async saveActiveAccount(account: AccountData): Promise<void> {
-        this.activeAccount = account;
+    async clear(): Promise<void> {
+        this.data = {
+            accounts: [],
+            highestIndex: -1
+        };
     }
 
-    async loadActiveAccount(): Promise<AccountData | null> {
-        return this.activeAccount || null;
+    async saveActiveAccount(accountId: string): Promise<void> {
+        this.data.activeAccount = accountId;
+    }
+
+    async loadActiveAccount(): Promise<string | null> {
+        return this.data.activeAccount || null;
+    }
+
+    async saveHighestIndex(index: number): Promise<void> {
+        this.data.highestIndex = index;
+    }
+
+    async loadHighestIndex(): Promise<number> {
+        return this.data.highestIndex;
     }
 } 
