@@ -124,7 +124,7 @@ export const createAccountAction = (name?: string): AppThunk<Account> => async (
             index: accountIndex,
             tag: w.tag,
             source: 'mnemonic' as const,
-            wotsIndex: 0,
+            wotsIndex: -1, //first wots address is created using account seed
             seed: Buffer.from(w.seed).toString('hex'),
             order: Object.keys(state.accounts.accounts).length // Use index as initial order
         };
@@ -345,10 +345,10 @@ export const importAccountsFromMcmAction = createAsyncThunk(
                 type: source === 'mnemonic' ? 'standard' : 'imported',
                 faddress: entry.address,
                 balance: '0',
-                index: currentHighestIndex + 1 + index, // Continue from current highest
+                index: source === 'mnemonic' ? currentHighestIndex + 1 + index : undefined, // Continue from current highest
                 tag: entry.address.slice(-24),
                 source: source,
-                wotsIndex: 0,
+                wotsIndex: -1,
                 seed: entry.secret,
                 order: Object.keys(state.accounts.accounts).length + index // Add to end
             }));
