@@ -1,7 +1,6 @@
 import { Derivation } from '../../../../src/redux/utils/derivation';
 import { DigestRandomGenerator } from '../../../../src/crypto/digestRandomGenerator';
-import CryptoJS from 'crypto-js';
-
+import { vi } from 'vitest';
 describe('Derivation', () => {
     // Test seed for consistency
     const TEST_SEED = new Uint8Array([

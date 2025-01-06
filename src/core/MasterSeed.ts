@@ -21,7 +21,6 @@ export class MasterSeed {
     private seed?: Uint8Array;
     private entropy?: Uint8Array;  // Store original entropy for phrase generation
     private _isLocked: boolean = true;
-    private encryptedSeed?: EncryptedData;  // Store encrypted seed for password verification
 
     public constructor(seed: Uint8Array, entropy?: Uint8Array) {
         this.seed = seed;

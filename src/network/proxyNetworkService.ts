@@ -1,4 +1,4 @@
-import { NetworkService, TagActivationResponse, TagResolveResponse, TransactionPushResponse } from "../types/network";
+import { NetworkService, TagActivationResponse, TagResolveResponse, TransactionResponse } from "../types/network";
 export class ProxyNetworkService implements NetworkService {
     protected apiUrl: string;
     getNetworkStatus(): Promise<{ height: number; nodes: any[]; }> {
@@ -20,7 +20,7 @@ export class ProxyNetworkService implements NetworkService {
             throw error;
         }
     }
-    async pushTransaction(transaction: string, recipients?: number): Promise<TransactionPushResponse> {
+    async pushTransaction(transaction: string, recipients?: number): Promise<TransactionResponse> {
         try {
             const response = await fetch(`${this.apiUrl}/push`, {
                 method: 'POST',
@@ -43,7 +43,7 @@ export class ProxyNetworkService implements NetworkService {
             console.error('Error pushing transaction:', error);
             return {
                 status: 'error',
-                data: error instanceof Error ? error.message : 'Unknown error'
+                error: error instanceof Error ? error.message : 'Unknown error'
             };
         }
     }

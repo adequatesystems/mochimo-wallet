@@ -1,6 +1,6 @@
 import { Account } from './account';
 import { EncryptedData } from '../crypto/encryption';
-import { AccountData } from './account';
+
 
 export interface Signature {
     signature: Uint8Array;
@@ -35,5 +35,5 @@ export interface WalletExport {
     version: string;
     timestamp: number;
     encrypted: EncryptedData;
-    accounts: AccountData[];
+    accounts: Account[];
 } 

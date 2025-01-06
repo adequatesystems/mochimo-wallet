@@ -1,4 +1,4 @@
-import { NetworkService, TagResolveResponse, TransactionPushResponse, TagActivationResponse } from '../types/network';
+import { NetworkService, TagResolveResponse, TransactionResponse, TagActivationResponse } from '../types/network';
 
 export abstract class BaseNetworkService implements NetworkService {
     protected abstract apiUrl: string;
@@ -7,7 +7,7 @@ export abstract class BaseNetworkService implements NetworkService {
         throw new Error("Method not implemented.");
     }
 
-    async pushTransaction(transaction: string, recipients?: number): Promise<TransactionPushResponse> {
+    async pushTransaction(transaction: string, recipients?: number): Promise<TransactionResponse> {
        throw new Error("Method not implemented.");
     }
 
