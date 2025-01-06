@@ -102,7 +102,7 @@ export const createAccountAction = (name?: string): AppThunk<Account> => async (
     try {
         const storage = StorageProvider.getStorage();
         const session = SessionManager.getInstance();
-        const masterSeed = await session.getMasterSeed();
+        const masterSeed =  session.getMasterSeed();
 
         // Get next account index from state
         const state = getState();

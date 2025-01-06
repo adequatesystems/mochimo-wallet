@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../store';
-import { renameAccountAction, reorderAccountsAction } from '../actions/accountActions';
+import { renameAccountAction, reorderAccountsAction, deleteAccountAction } from '../actions/accountActions';
 import { createAccountAction } from '../actions/walletActions';
 
 export const useAccounts = () => {
@@ -21,6 +21,10 @@ export const useAccounts = () => {
         return await dispatch(renameAccountAction(id, name));
     }, [dispatch]);
 
+    const deleteAccount = useCallback(async (id: string) => {
+        return await dispatch(deleteAccountAction(id));
+    }, [dispatch]);
+
     const reorderAccounts = useCallback(async (newOrder: Record<string, number>) => {
         return await dispatch(reorderAccountsAction(newOrder));
     }, [dispatch]);
@@ -29,6 +33,7 @@ export const useAccounts = () => {
         accounts: sortedAccounts,
         createAccount,
         renameAccount,
+        deleteAccount,
         reorderAccounts
     };
 }; 
