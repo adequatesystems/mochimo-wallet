@@ -7,6 +7,7 @@ import * as bip39 from '@scure/bip39';
 import { wordlist } from '@scure/bip39/wordlists/english';
 import { DigestRandomGenerator, wordArrayToBytes } from '@/crypto/digestRandomGenerator';
 import { Derivation } from '../redux/utils/derivation';
+import { createHash, createHmac } from 'crypto';
 
 const PBKDF2_ITERATIONS = process.env.NODE_ENV === 'test' ? 1000 : 100000;
 
@@ -264,7 +265,31 @@ export class MasterSeed {
         }
     }
 
+    /**
+     * Derives a storage key from the master seed using HKDF-like construction
+     * Returns a 32-byte key suitable for AES-256
+     */
+    deriveStorageKey(): Uint8Array {
+        if (this._isLocked || !this.seed) {
+            throw new Error('Master seed is locked');
+        }
 
+        // Initial hash with a domain separator
+        const initialHash = createHash('sha256')
+            .update('mochimo_storage_key_v1')
+            .update(this.seed)
+            .digest();
 
+        // Use HMAC for the extraction step
+        const prk = createHmac('sha256', 'mochimo_storage_salt')
+            .update(initialHash)
+            .digest();
 
+        // Expansion step
+        const storageKey = createHmac('sha256', prk)
+            .update('mochimo_storage_info')
+            .digest();
+
+        return new Uint8Array(storageKey);
+    }
 }

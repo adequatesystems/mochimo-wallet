@@ -23,7 +23,8 @@ describe('useAccounts', () => {
         mockSession = {
             getMasterSeed: vi.fn().mockReturnValue(mockMasterSeed),
             unlock: vi.fn(),
-            lock: vi.fn()
+            lock: vi.fn(),
+            getStorageKey: vi.fn().mockReturnValue(new Uint8Array(32).fill(1))
         };
 
         StorageProvider.setStorage(mockStorage);
@@ -55,7 +56,7 @@ describe('useAccounts', () => {
 
             expect(result.current.accounts).toHaveLength(1);
             expect(result.current.accounts[0].name).toBe('Test Account');
-            expect(await mockStorage.loadAccount(result.current.accounts[0].tag)).toBeDefined();
+            expect(await mockStorage.loadAccount(result.current.accounts[0].tag, SessionManager.getInstance().getStorageKey())).toBeDefined();
 
         });
     });

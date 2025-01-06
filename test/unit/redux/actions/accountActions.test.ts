@@ -61,7 +61,7 @@ describe('Account Actions', () => {
 
         // 4. Save accounts to storage
         await Promise.all([
-            ...accounts.map(account => mockStorage.saveAccount(account)),
+            ...accounts.map(account => mockStorage.saveAccount(account, SessionManager.getInstance().getStorageKey())),
             mockStorage.saveHighestIndex(accounts.length - 1)
         ]);
 

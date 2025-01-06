@@ -56,13 +56,12 @@ export const createWalletAction = createAsyncThunk(
 export const unlockWalletAction = (password: string): AppThunk => async (dispatch) => {
     try {
         const storage = StorageProvider.getStorage();
-        const session = SessionManager.getInstance();
 
-        await session.unlock(password, storage);
-
+        await SessionManager.getInstance().unlock(password, storage);
+        const storageKey = SessionManager.getInstance().getStorageKey();
         // Load accounts and highest index
         const [accounts, highestIndex, activeAccount] = await Promise.all([
-            storage.loadAccounts(),
+            storage.loadAccounts(storageKey),
             storage.loadHighestIndex(),
             storage.loadActiveAccount()
         ]);
@@ -111,10 +110,10 @@ export const createAccountAction = (name?: string): AppThunk<Account> => async (
             order: Object.keys(state.accounts.accounts).length // Use index as initial order
         };
 
-
+        const storageKey = session.getStorageKey();
 
         await Promise.all([
-            storage.saveAccount(account),
+            storage.saveAccount(account, storageKey),
             storage.saveHighestIndex(accountIndex)
         ]);
 
@@ -176,9 +175,10 @@ export const loadWalletJSONAction = (
 
         // Save accounts to storage and get highest index
         let highestIndex = -1;
+        const storageKey = session.getStorageKey();
         await Promise.all(
             Object.values(walletJSON.accounts).map(async (account) => {
-                await storage.saveAccount(account);
+                await storage.saveAccount(account, storageKey);
                 if (account.index !== undefined && account.index > highestIndex) {
                     highestIndex = account.index;
                 }
@@ -324,6 +324,8 @@ export const importAccountsFromMcmAction = createAsyncThunk(
 
             // 4. Get storage and current highest index
             const storage = StorageProvider.getStorage();
+            const session = SessionManager.getInstance();
+            const storageKey = session.getStorageKey();
             const currentHighestIndex = state.wallet.highestAccountIndex;
 
             // 5. Create and save new accounts
@@ -343,7 +345,7 @@ export const importAccountsFromMcmAction = createAsyncThunk(
 
             // 6. Save accounts
             await Promise.all([
-                ...accounts.map(account => storage.saveAccount(account)),
+                ...accounts.map(account => storage.saveAccount(account, storageKey)),
                 storage.saveHighestIndex(currentHighestIndex + accounts.length)
             ]);
 

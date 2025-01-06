@@ -1,29 +1,31 @@
 import { Storage } from '../../src/types/storage';
 import { EncryptedData } from '../../src/crypto/encryption';
 import { Account } from '../../src/types';
-
+import { decryptAccount, encryptAccount, EncryptedAccount } from '../../src/crypto/accountEncryption';
 export class MockStorage implements Storage {
     private data: { 
         masterSeed?: EncryptedData;
         activeAccount?: string;
-        accounts: Record<string, Account>;
+        accounts: Record<string, EncryptedAccount>;
         highestIndex: number;
     } = {
         accounts: {},
         highestIndex: -1
     };
 
-    async saveAccount(account: Account): Promise<void> {
+    async saveAccount(account: Account, storageKey: Uint8Array): Promise<void> {
         if (!account.tag) throw new Error('Account must have a tag');
-        this.data.accounts[account.tag] = account;
+        this.data.accounts[account.tag] = await encryptAccount(account, storageKey);
     }
 
-    async loadAccount(id: string): Promise<Account | null> {
-        return this.data.accounts[id] || null;
+    async loadAccount(id: string, storageKey: Uint8Array): Promise<Account | null> {
+        const account = this.data.accounts[id];
+        if (!account) return null;
+        return decryptAccount(account, storageKey);
     }
 
-    async loadAccounts(): Promise<Account[]> {
-        return Object.values(this.data.accounts);
+    async loadAccounts(storageKey: Uint8Array): Promise<Account[]> {
+        return Promise.all(Object.values(this.data.accounts).map(account => decryptAccount(account, storageKey)));
     }
 
     async saveHighestIndex(index: number): Promise<void> {

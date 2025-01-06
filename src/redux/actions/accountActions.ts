@@ -5,6 +5,7 @@ import { StorageProvider } from '../context/StorageContext';
 import { Account } from '../../types/account';
 import { Derivation } from '../utils/derivation';
 import { updateAccount, reorderAccounts, removeAccount, bulkAddAccounts, setSelectedAccount } from '../slices/accountSlice';
+import { SessionManager } from '../context/SessionContext';
 
 
 // Update account
@@ -14,12 +15,12 @@ export const updateAccountAction = (
 ): AppThunk => async (dispatch) => {
     try {
         const storage = StorageProvider.getStorage();
-        const account = await storage.loadAccount(id);
+        const account = await storage.loadAccount(id, SessionManager.getInstance().getStorageKey());
 
         if (!account) throw new Error('Account not found');
 
         const updatedAccount = { ...account, ...updates };
-        await storage.saveAccount(updatedAccount);
+        await storage.saveAccount(updatedAccount, SessionManager.getInstance().getStorageKey());
 
         dispatch(updateAccount({ id, updates }));
     } catch (error) {
@@ -102,7 +103,7 @@ export const importMCMAccountAction = (
             order: Object.keys(state.accounts.accounts).length
         };
 
-        await storage.saveAccount(account);
+        await storage.saveAccount(account, SessionManager.getInstance().getStorageKey());
         dispatch(bulkAddAccounts({ [tag]: account }));
         return account;
     } catch (error) {
@@ -148,7 +149,7 @@ export const bulkImportMCMAccountsAction = (
                 wotsIndex: account.wotsIndex
             };
 
-            await storage.saveAccount(newAccount);
+            await storage.saveAccount(newAccount, SessionManager.getInstance().getStorageKey());
             accountEntries[id] = newAccount;
         }));
 
@@ -227,7 +228,7 @@ export const reorderAccountsAction = (
         // Update storage
         await Promise.all(
             Object.entries(newOrder).map(([id, order]) =>
-                storage.saveAccount({ ...accounts[id], order })
+                storage.saveAccount({ ...accounts[id], order }, SessionManager.getInstance().getStorageKey())
             )
         );
 

@@ -32,7 +32,9 @@ describe('Wallet Actions', () => {
         mockSession = {
             setMasterSeed: vi.fn(),
             unlock: vi.fn(),
-            lock: vi.fn()
+            lock: vi.fn(),
+            getMasterSeed: vi.fn(),
+            getStorageKey: vi.fn()
         } as unknown as SessionManager;
 
         vi.spyOn(SessionManager, 'getInstance').mockReturnValue(mockSession);
