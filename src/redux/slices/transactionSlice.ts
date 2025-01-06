@@ -1,10 +1,7 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { TransactionState } from '../types/state';
 
-interface TransactionState {
-    isLoading: boolean;
-    error: string | null;
-    pendingTransactions: string[]; // Array of transaction hashes
-}
+
 
 const initialState: TransactionState = {
     isLoading: false,

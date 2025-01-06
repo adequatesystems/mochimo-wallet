@@ -24,6 +24,15 @@ export interface RootState {
     wallet: WalletState;
     accounts: AccountState;
 }
+export interface NetworkState {
+    isLoading: boolean;
+    error: Error | null;
+}
+export interface TransactionState {
+    isLoading: boolean;
+    error: string | null;
+    pendingTransactions: string[]; // Array of transaction hashes
+}
 
 // Add type guard to ensure imported accounts have seeds
 export function isImportedAccount(account: Account): account is Account & { seed: string } {
