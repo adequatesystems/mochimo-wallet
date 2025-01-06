@@ -1,6 +1,7 @@
 import { Storage } from '../types/storage';
+import { Account } from '../types/account';
 import { EncryptedData } from '../crypto/encryption';
-import { AccountData } from '../types/account';
+import { encryptAccount, decryptAccount, EncryptedAccount } from '../crypto/accountEncryption';
 
 export class LocalStorage implements Storage {
     private readonly prefix: string;
@@ -9,57 +10,94 @@ export class LocalStorage implements Storage {
         this.prefix = prefix;
     }
 
+    private getKey(key: string): string {
+        return `${this.prefix}${key}`;
+    }
+
     async saveMasterSeed(encrypted: EncryptedData): Promise<void> {
         localStorage.setItem(
-            `${this.prefix}master_seed`,
+            this.getKey('masterSeed'),
             JSON.stringify(encrypted)
         );
     }
 
     async loadMasterSeed(): Promise<EncryptedData | null> {
-        const data = localStorage.getItem(`${this.prefix}master_seed`);
+        const data = localStorage.getItem(this.getKey('masterSeed'));
         return data ? JSON.parse(data) : null;
     }
 
-    async saveAccount(account: AccountData): Promise<void> {
-        const accounts = await this.loadAccounts();
-        const index = accounts.findIndex(a => a.tag === account.tag);
+    async saveAccount(account: Account, storageKey: Uint8Array): Promise<void> {
+        const data = localStorage.getItem(this.getKey('accounts'));
+        const accounts: Record<string, EncryptedAccount> = data ? JSON.parse(data) : {};
         
-        if (index >= 0) {
-            accounts[index] = account;
-        } else {
-            accounts.push(account);
-        }
-
+        accounts[account.tag] = await encryptAccount(account, storageKey);
+        
         localStorage.setItem(
-            `${this.prefix}accounts`,
+            this.getKey('accounts'),
             JSON.stringify(accounts)
         );
     }
 
-    async loadAccounts(): Promise<AccountData[]> {
-        const data = localStorage.getItem(`${this.prefix}accounts`);
-        return data ? JSON.parse(data) : [];
+    async loadAccount(id: string, storageKey: Uint8Array): Promise<Account | null> {
+        const data = localStorage.getItem(this.getKey('accounts'));
+        const accounts: Record<string, EncryptedAccount> = data ? JSON.parse(data) : {};
+        const encryptedAccount = accounts[id];
+        
+        if (!encryptedAccount) return null;
+        return decryptAccount(encryptedAccount, storageKey);
     }
 
-    async saveActiveAccount(account: AccountData): Promise<void> {
-        localStorage.setItem(
-            `${this.prefix}active_account`,
-            JSON.stringify(account)
+    async loadAccounts(storageKey: Uint8Array): Promise<Account[]> {
+        const data = localStorage.getItem(this.getKey('accounts'));
+        const accounts: Record<string, EncryptedAccount> = data ? JSON.parse(data) : {};
+        
+        return Promise.all(
+            Object.values(accounts).map(encrypted => 
+                decryptAccount(encrypted, storageKey)
+            )
         );
     }
 
-    async loadActiveAccount(): Promise<AccountData | null> {
-        const data = localStorage.getItem(`${this.prefix}active_account`);
+    async deleteAccount(id: string): Promise<void> {
+        const data = localStorage.getItem(this.getKey('accounts'));
+        const accounts: Record<string, EncryptedAccount> = data ? JSON.parse(data) : {};
+        
+        delete accounts[id];
+        
+        localStorage.setItem(
+            this.getKey('accounts'),
+            JSON.stringify(accounts)
+        );
+    }
+
+    async saveActiveAccount(id: string | null): Promise<void> {
+        localStorage.setItem(
+            this.getKey('activeAccount'),
+            JSON.stringify(id)
+        );
+    }
+
+    async loadActiveAccount(): Promise<string | null> {
+        const data = localStorage.getItem(this.getKey('activeAccount'));
         return data ? JSON.parse(data) : null;
     }
 
-    /**
-     * Clears all wallet data from storage
-     */
+    async saveHighestIndex(index: number): Promise<void> {
+        localStorage.setItem(
+            this.getKey('highestIndex'),
+            JSON.stringify(index)
+        );
+    }
+
+    async loadHighestIndex(): Promise<number> {
+        const data = localStorage.getItem(this.getKey('highestIndex'));
+        return data ? JSON.parse(data) : -1;
+    }
+
     async clear(): Promise<void> {
-        localStorage.removeItem(`${this.prefix}master_seed`);
-        localStorage.removeItem(`${this.prefix}accounts`);
-        localStorage.removeItem(`${this.prefix}active_account`);
+        const keys = Object.keys(localStorage).filter(key => 
+            key.startsWith(this.prefix)
+        );
+        keys.forEach(key => localStorage.removeItem(key));
     }
 } 
