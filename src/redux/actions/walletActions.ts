@@ -16,7 +16,7 @@ import { MasterSeed } from '../../core/MasterSeed';
 import { AppThunk } from '../store';
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { RootState } from '../store';
-import { MCMDecoder } from '@/crypto/mcmDecoder';
+import { DecodeResult, MCMDecoder } from '@/crypto/mcmDecoder';
 
 
 
@@ -244,59 +244,124 @@ export const setSelectedAccountAction = (
     }
 };
 
+interface ImportOptions {
+    mcmData: DecodeResult;
+    password: string;
+    accountFilter?: (index: number, seed: Uint8Array, name: string) => boolean;
+}
+
 export const importFromMcmFileAction = createAsyncThunk(
     'wallet/importFromMcm',
-    async ({ mcmData, password }: { mcmData: ArrayBuffer; password: string }, { dispatch }) => {
+    async ({ mcmData, password, accountFilter }: ImportOptions, { dispatch }) => {
         try {
             dispatch(setError(null));
 
-            // 1. Clear any existing state/storage
+            // 1. Clear existing state/storage
             const storage = StorageProvider.getStorage();
             await storage.clear();
 
-            // 2. Decode MCM file
-            const { entries, privateHeader } = await MCMDecoder.decode(mcmData, password);
+            // 2. Get MCM data
+            const { entries, privateHeader } = mcmData;
+            console.log('Private header:', privateHeader);
             const detSeed = privateHeader['deterministic seed hex'];
 
-            // 3. Create master seed
+            // 3. Create master seed and set up wallet
             const masterSeed = new MasterSeed(Buffer.from(detSeed, 'hex')); 
-
-            // 4. Save encrypted master seed to storage using the same password
             const encrypted = await masterSeed.export(password);
-            console.log('Saving encrypted seed:', encrypted);
             await storage.saveMasterSeed(encrypted);
 
-            // 5. Set session state directly
-            const session = SessionManager.getInstance();
-            session.setMasterSeed(masterSeed);
-
-            // 6. Update wallet state
+            // 4. Set up wallet state BEFORE importing accounts
             dispatch(setHasWallet(true));
             dispatch(setInitialized(true));
             dispatch(setLocked(false));
 
-            // 7. Create and save accounts
-            const accounts = entries.map((entry, index) => ({
-                name: entry.name || `Account ${index + 1}`,
-                type: 'standard' as const,
+            // 5. Set session state
+            const session = SessionManager.getInstance();
+            session.setMasterSeed(masterSeed);
+
+            // 6. Now import accounts
+            const results = await dispatch(importAccountsFromMcmAction({ 
+                mcmData, 
+                accountFilter, 
+                source: 'mnemonic' 
+            })).unwrap();
+             
+            return { 
+                entries: entries,
+                totalEntries: entries.length,
+                importedCount: results.importedCount
+            };
+        } catch (error) {
+            console.error('Import error:', error);
+            dispatch(setError(error instanceof Error ? error.message : 'Unknown error'));
+            throw error;
+        }
+    }
+);
+
+interface ImportAccountsOptions {
+    mcmData: DecodeResult;
+    accountFilter?: (index: number, seed: Uint8Array, name: string) => boolean;
+    source: 'mnemonic' | 'mcm';
+}
+
+
+
+export const importAccountsFromMcmAction = createAsyncThunk(
+    'wallet/importAccounts',
+    async ({ mcmData, accountFilter, source }: ImportAccountsOptions, { dispatch, getState }) => {
+        try {
+            dispatch(setError(null));
+
+            // 1. Verify we have an unlocked wallet
+            const state = getState() as RootState;
+            if (!state.wallet.hasWallet || state.wallet.locked) {
+                throw new Error('Wallet must be unlocked to import accounts');
+            }
+
+            // 2. Decode MCM file
+            const { entries } = mcmData;
+
+            // 3. Filter accounts based on options
+            let filteredEntries = entries;
+            if (accountFilter) {
+                filteredEntries = entries.filter((entry, index) => {
+                    if (accountFilter(index, Buffer.from(entry.secret, 'hex'), entry.name)) return true;
+                    return false;
+                });
+            }
+
+            if (filteredEntries.length === 0) {
+                throw new Error('No accounts matched the filter criteria');
+            }
+
+            // 4. Get storage and current highest index
+            const storage = StorageProvider.getStorage();
+            const currentHighestIndex = state.wallet.highestAccountIndex;
+
+            // 5. Create and save new accounts
+            const accounts: Account[] = filteredEntries.map((entry, index) => ({
+                name: entry.name || `Imported Account ${index + 1}`,
+                type: source === 'mnemonic' ? 'standard' : 'imported',
                 faddress: entry.address,
                 balance: '0',
-                index: index,
+                index: currentHighestIndex + 1 + index, // Continue from current highest
                 tag: entry.address.slice(-24),
-                source: 'mnemonic' as const,
+                source: source,
                 wotsIndex: 0,
                 seed: entry.secret,
-                order: index
+                order: Object.keys(state.accounts.accounts).length + index // Add to end
             }));
+            console.log('Imported accounts:', accounts);
 
-            // 8. Save accounts
+            // 6. Save accounts
             await Promise.all([
                 ...accounts.map(account => storage.saveAccount(account)),
-                storage.saveHighestIndex(accounts.length - 1)
+                storage.saveHighestIndex(currentHighestIndex + accounts.length)
             ]);
 
-            // 9. Update account state
-            dispatch(setHighestIndex(accounts.length - 1));
+            // 7. Update account state
+            dispatch(setHighestIndex(currentHighestIndex + accounts.length));
             dispatch(bulkAddAccounts(
                 accounts.reduce((acc, account) => {
                     acc[account.tag] = account;
@@ -304,9 +369,13 @@ export const importFromMcmFileAction = createAsyncThunk(
                 }, {} as Record<string, Account>)
             ));
 
-            return { entries }; // Only return entries, not masterSeed
+            return { 
+                importedAccounts: accounts,
+                totalAvailable: entries.length,
+                importedCount: accounts.length
+            };
         } catch (error) {
-            console.error('Import error:', error);
+            console.error('Import accounts error:', error);
             dispatch(setError(error instanceof Error ? error.message : 'Unknown error'));
             throw error;
         }

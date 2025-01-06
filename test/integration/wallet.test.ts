@@ -4,7 +4,7 @@ import walletReducer from '../../src/redux/slices/walletSlice';
 import accountReducer from '../../src/redux/slices/accountSlice';
 import networkReducer from '../../src/redux/slices/networkSlice';
 import transactionReducer from '../../src/redux/slices/transactionSlice';
-import { createWalletAction, lockWalletAction, unlockWalletAction, createAccountAction, importFromMcmFileAction } from '../../src/redux/actions/walletActions';
+import { createWalletAction, lockWalletAction, unlockWalletAction, createAccountAction, importFromMcmFileAction, importAccountsFromMcmAction } from '../../src/redux/actions/walletActions';
 import { renameAccountAction, reorderAccountsAction } from '../../src/redux/actions/accountActions';
 import { SessionManager } from '../../src/redux/context/SessionContext';
 import { NetworkProvider } from '../../src/redux/context/NetworkContext';
@@ -13,6 +13,7 @@ import { MockStorage } from '../mocks/MockStorage';
 import { AppStore } from '../../src/redux/store';
 import fs from 'fs/promises';
 import path from 'path';
+import { MCMDecoder } from '../../src/crypto/mcmDecoder';
 
 // Set longer timeout for all tests in this file
 vi.setConfig({ testTimeout: 60000 }); // 60 seconds
@@ -238,12 +239,12 @@ describe('Wallet Integration', () => {
             // 1. Read MCM file from fixtures
             const mcmPath = path.join(__dirname, '../fixtures/test.mcm');
             const mcmData = await fs.readFile(mcmPath);
-            
+            const decoded = await MCMDecoder.decode(mcmData, mcmPassword);
             // 2. Import wallet using MCM password
             const result = await store.dispatch(importFromMcmFileAction({
-                mcmData: mcmData,
+                mcmData: decoded,
                 password: mcmPassword
-            }));
+            })).unwrap();
 
 
 
@@ -286,5 +287,101 @@ describe('Wallet Integration', () => {
             expect(persistedAccounts).toHaveLength(3);
             expect(persistedAccounts.find(a => a.name === 'acc1')).toBeDefined();
         }, 30000);
+
+        it('should import filtered accounts from MCM file', async () => {
+            const mcmPassword = 'kandokando';
+            const mcmPath = path.join(__dirname, '../fixtures/test.mcm');
+            const mcmData = await fs.readFile(mcmPath);
+            const decoded = await MCMDecoder.decode(mcmData, mcmPassword);
+            console.log('Decoded MCM data len:', decoded.entries.length);
+            // Test importing specific indices
+            const indexResult = await store.dispatch(importFromMcmFileAction({
+                mcmData: decoded,
+                password: mcmPassword,
+                accountFilter: (index, seed, name) => [0, 1].includes(index)
+            })).unwrap()
+
+            expect(indexResult.importedCount).toBe(2);
+            let accounts = Object.values(store.getState().accounts.accounts);
+            expect(accounts).toHaveLength(2);
+
+            // Clear state for next test
+            await store.dispatch(lockWalletAction());
+            const storage = StorageProvider.getStorage();
+            await storage.clear();
+
+            // Test importing by name
+            const nameResult = await store.dispatch(importFromMcmFileAction({
+                mcmData: decoded,
+                password: mcmPassword,
+                accountFilter: (index, seed, name) => ['acc1', 'acc2'].includes(name)
+            })).unwrap()
+
+            expect(nameResult.importedCount).toBe(3);
+            accounts = Object.values(store.getState().accounts.accounts);
+            expect(accounts).toHaveLength(3);
+            expect(accounts.find(a => a.name === 'acc1')).toBeDefined();
+            expect(accounts.find(a => a.name === 'acc2')).toBeDefined();
+
+            // Test error on no matches
+            await expect(
+                store.dispatch(importFromMcmFileAction({
+                    mcmData: decoded,
+                    password: mcmPassword,
+                    accountFilter: (index, seed, name) => ['nonexistent'].includes(name)
+                })).unwrap()
+            ).rejects.toThrow('No accounts matched the filter criteria');
+        });
+
+        it('should import accounts from MCM file into existing wallet', async () => {
+            // 1. First create a wallet with some accounts
+            await store.dispatch(createWalletAction({ password: testPassword }));
+            await store.dispatch(createAccountAction('Original Account 1'));
+            await store.dispatch(createAccountAction('Original Account 2'));
+            // Verify initial state
+            let state = store.getState();
+            expect(Object.keys(state.accounts.accounts)).toHaveLength(2);
+
+            // 2. Import accounts from MCM
+            const mcmPassword = 'kandokando';
+            const mcmPath = path.join(__dirname, '../fixtures/test.mcm');
+            const mcmData = await fs.readFile(mcmPath);
+            const decoded = await MCMDecoder.decode(mcmData, mcmPassword);  
+            console.log('Decoded MCM data len:', decoded.entries.length);
+            // Import specific accounts
+            const result = await store.dispatch(importAccountsFromMcmAction({
+                mcmData: decoded,
+                source: 'mcm',
+                accountFilter: (index, seed, name) => [0, 1].includes(index)
+            })).unwrap()
+
+            // 3. Verify imports
+            expect(result.importedCount).toBe(2);
+            state = store.getState();
+            const accounts = Object.values(state.accounts.accounts);
+            
+            // Should have original + imported accounts
+            expect(accounts).toHaveLength(4);
+            
+            // Verify original accounts still exist
+            expect(accounts.find(a => a.name === 'Original Account 1')).toBeDefined();
+            expect(accounts.find(a => a.name === 'Original Account 2')).toBeDefined();
+            
+            // Verify imported accounts
+            expect(accounts.find(a => a.name === 'acc1')).toBeDefined();
+            expect(accounts.find(a => a.name === 'acc2')).toBeDefined();
+
+            // 4. Verify account indices are sequential
+            const indices = accounts.map(a => a.index).sort((a, b) => (a ?? 0) - (b ?? 0));
+            expect(indices).toEqual([0, 1, 2, 3]);
+
+            // 5. Verify persistence through lock/unlock
+            await store.dispatch(lockWalletAction());
+            await store.dispatch(unlockWalletAction(testPassword));
+
+            state = store.getState();
+            const persistedAccounts = Object.values(state.accounts.accounts);
+            expect(persistedAccounts).toHaveLength(4);
+        });
     });
 }); 

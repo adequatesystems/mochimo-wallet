@@ -20,6 +20,12 @@ export interface WOTSEntry {
     name: string;
 }
 
+export interface DecodeResult {
+    publicHeader: PublicHeader;
+    privateHeader: PrivateHeader;
+    entries: WOTSEntry[];
+}
+
 export class MCMDecoder {
     private static parseJavaByteArray(str: string): Uint8Array {
         const bytes = str.slice(1, -1).split(',').map(b => {
@@ -108,11 +114,7 @@ export class MCMDecoder {
         return { secret: secret.secret, address: address };
     }
 
-    static async decode(mcmFile: ArrayBuffer, password: string): Promise<{
-        publicHeader: PublicHeader;
-        privateHeader: PrivateHeader;
-        entries: WOTSEntry[];
-    }> {
+    static async decode(mcmFile: ArrayBuffer, password: string): Promise<DecodeResult> {
         try {
             let fp = 0;
             const data = new Uint8Array(mcmFile);
