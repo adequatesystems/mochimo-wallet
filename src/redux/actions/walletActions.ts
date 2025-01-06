@@ -1,4 +1,3 @@
-
 import {
     setInitialized,
     setLocked,
@@ -15,39 +14,45 @@ import { Account } from '../../types/account';
 import { EncryptedData } from '../../crypto/encryption';
 import { MasterSeed } from '../../core/MasterSeed';
 import { AppThunk } from '../store';
+import { createAsyncThunk } from '@reduxjs/toolkit';
+import { RootState } from '../store';
 
 
 // Create new wallet
-export const createWalletAction = (
-    password: string,
-    mnemonic?: string
-): AppThunk<string> => async (dispatch) => {
-    try {
-        if (!password) {
-            throw new Error('Password is required');
+export const createWalletAction = createAsyncThunk(
+    'wallet/create',
+    async ({ password, mnemonic }: { password: string; mnemonic?: string }, { dispatch }) => {
+        try {
+            dispatch(setError(null));
+            let masterSeed: MasterSeed;
+            if (mnemonic) {
+                masterSeed = await MasterSeed.fromPhrase(mnemonic);
+            } else {
+                masterSeed = await MasterSeed.create();
+            }
+    
+            // Encrypt and store if storage is provided
+            const storage = StorageProvider.getStorage();
+            if (storage) {
+                const encrypted = await masterSeed.export(password);
+                await storage.saveMasterSeed(encrypted);
+            }
+
+            // Initialize session
+            const session = SessionManager.getInstance();
+            await session.unlock(password, storage);
+            
+            // Set wallet states in correct order
+            dispatch(setHasWallet(true));
+            dispatch(setInitialized(true));
+            dispatch(setLocked(false));
+
+        } catch (error) {
+            dispatch(setError(error instanceof Error ? error.message : 'Unknown error'));
+            throw error;
         }
-
-        const storage = StorageProvider.getStorage();
-        const masterSeed = mnemonic 
-            ? await MasterSeed.fromPhrase(mnemonic)
-            : await MasterSeed.create();
-
-        // Encrypt and save master seed
-        const encrypted = await masterSeed.export(password);
-        await storage.saveMasterSeed(encrypted);
-
-        // Get mnemonic for backup
-        const seedPhrase = await masterSeed.toPhrase();
-
-        dispatch(setHasWallet(true));
-        dispatch(setInitialized(true));
-
-        return seedPhrase;
-    } catch (error) {
-        dispatch(setError(error instanceof Error ? error.message : 'Failed to create wallet'));
-        throw error;
     }
-};
+);
 
 // Load wallet
 export const loadWalletAction = (password: string): AppThunk => async (dispatch) => {

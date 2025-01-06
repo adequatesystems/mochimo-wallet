@@ -1,0 +1,229 @@
+import { vi } from 'vitest';
+import { configureStore } from '@reduxjs/toolkit';
+import walletReducer from '../../src/redux/slices/walletSlice';
+import accountReducer from '../../src/redux/slices/accountSlice';
+import networkReducer from '../../src/redux/slices/networkSlice';
+import transactionReducer from '../../src/redux/slices/transactionSlice';
+import { createWalletAction, lockWalletAction, unlockWalletAction, createAccountAction } from '../../src/redux/actions/walletActions';
+import { renameAccountAction, reorderAccountsAction } from '../../src/redux/actions/accountActions';
+import { SessionManager } from '../../src/redux/context/SessionContext';
+import { NetworkProvider } from '../../src/redux/context/NetworkContext';
+import { StorageProvider } from '../../src/redux/context/StorageContext';
+import { MockStorage } from '../mocks/MockStorage';
+import { AppStore } from '../../src/redux/store';
+
+
+describe('Wallet Integration', () => {
+    let store: AppStore;
+    let mockStorage: MockStorage;
+    const testPassword = 'testPassword123';
+
+    const mockNetworkService = {
+        activateTag: vi.fn().mockResolvedValue({ status: 'success' }),
+        resolveTag: vi.fn().mockImplementation(async () => ({
+            addressConsensus: '0'.repeat(64),
+            balanceConsensus: '1000000',
+            status: 'success'
+        })),
+        pushTransaction: vi.fn(),
+        getNetworkStatus: vi.fn().mockReturnValue('connected')
+    };
+
+    beforeEach(() => {
+        // Setup mock storage
+        mockStorage = new MockStorage();
+        StorageProvider.setStorage(mockStorage);
+
+        // Setup mock network
+        NetworkProvider.setNetwork(mockNetworkService);
+
+        // Create store
+        store = configureStore({
+            reducer: {
+                wallet: walletReducer,
+                accounts: accountReducer,
+                network: networkReducer,
+                transaction: transactionReducer
+            }
+        });
+    });
+
+    afterEach(() => {
+        vi.clearAllMocks();
+        mockStorage.clear();
+    });
+
+    describe('Wallet Lifecycle', () => {
+        it('should handle complete wallet lifecycle with accounts', async () => {
+            // 1. Create wallet
+            await store.dispatch(createWalletAction({ password: testPassword }));
+            
+            // 2. Create 5 accounts
+            for (let i = 0; i < 5; i++) {
+                await store.dispatch(createAccountAction(`Account ${i + 1}`));
+            }
+
+            // Verify accounts were created
+            let state = store.getState();
+            expect(Object.keys(state.accounts.accounts)).toHaveLength(5);
+            expect(state.wallet.highestAccountIndex).toBe(4);
+
+            // 3. Lock wallet
+            await store.dispatch(lockWalletAction());
+            state = store.getState(); // Get fresh state after lock
+            expect(state.wallet.locked).toBe(true);
+
+            // 4. Verify persistence
+            store = configureStore({
+                reducer: {
+                    wallet: walletReducer,
+                    accounts: accountReducer,
+                    network: networkReducer,
+                    transaction: transactionReducer
+                }
+            });
+
+            // 5. Unlock and verify accounts are loaded
+            await store.dispatch(unlockWalletAction(testPassword));
+            state = store.getState(); // Get fresh state after unlock
+            expect(Object.keys(state.accounts.accounts)).toHaveLength(5);
+            expect(state.wallet.highestAccountIndex).toBe(4);
+            expect(state.wallet.locked).toBe(false);
+
+            // 6. Verify account details
+            const accounts = Object.values(state.accounts.accounts);
+            accounts.forEach((account, i) => {
+                expect(account.name).toBe(`Account ${i + 1}`);
+                expect(account.type).toBe('standard');
+                expect(account.tag).toBeDefined();
+                expect(account.faddress).toBeDefined();
+                expect(account.seed).toBeDefined(); 
+            });
+        });
+
+        it('should properly set wallet state after creation', async () => {
+            await store.dispatch(createWalletAction({ password: testPassword }));
+            
+            const state = store.getState();
+            expect(state.wallet).toEqual({
+                hasWallet: true,
+                initialized: true,
+                locked: false,
+                error: null,
+                network: 'mainnet',
+                highestAccountIndex: -1, // Initial value before any accounts
+                activeAccount: null
+            });
+        });
+
+        it('should handle account renaming', async () => {
+            // 1. Create wallet and accounts
+            await store.dispatch(createWalletAction({ password: testPassword }));
+            
+            // Create 3 accounts
+            for (let i = 0; i < 3; i++) {
+                await store.dispatch(createAccountAction(`Account ${i + 1}`));
+            }
+
+            let state = store.getState();
+            const accounts = Object.values(state.accounts.accounts);
+            const accountsToRename = accounts.slice(0, 2); // Get first two accounts
+
+            // 2. Rename accounts and verify
+            for (const account of accountsToRename) {
+                await store.dispatch(renameAccountAction(account.tag, `Renamed ${account.name}`));
+            }
+
+            // Verify renames
+            state = store.getState();
+            const renamedAccounts = Object.values(state.accounts.accounts);
+            
+            // First two should be renamed
+            expect(renamedAccounts[0].name).toBe('Renamed Account 1');
+            expect(renamedAccounts[1].name).toBe('Renamed Account 2');
+            // Third should be unchanged
+            expect(renamedAccounts[2].name).toBe('Account 3');
+
+            // 3. Verify persistence through lock/unlock cycle
+            await store.dispatch(lockWalletAction());
+            await store.dispatch(unlockWalletAction(testPassword));
+
+            state = store.getState();
+            const persistedAccounts = Object.values(state.accounts.accounts);
+            expect(persistedAccounts[0].name).toBe('Renamed Account 1');
+            expect(persistedAccounts[1].name).toBe('Renamed Account 2');
+            expect(persistedAccounts[2].name).toBe('Account 3');
+
+            // 4. Try to rename non-existent account
+            await expect(
+                store.dispatch(renameAccountAction('non-existent-tag', 'Should Fail'))
+            ).rejects.toThrow();
+        });
+
+        it('should handle account reordering', async () => {
+            // 1. Create wallet and accounts
+            await store.dispatch(createWalletAction({ password: testPassword }));
+            
+            // Create 3 accounts
+            for (let i = 0; i < 3; i++) {
+                await store.dispatch(createAccountAction(`Account ${i + 1}`));
+            }
+
+            let state = store.getState();
+            const originalAccounts = Object.values(state.accounts.accounts);
+            
+            // Store original indexes and tags
+            const originalOrder = originalAccounts.map(account => ({
+                tag: account.tag,
+                index: account.index,
+                name: account.name,
+                order: account.order
+            }));
+
+            // 2. Reorder accounts (move last account to first position)
+            await store.dispatch(reorderAccountsAction({
+                [originalOrder[2].tag]: 0,  // Last account to first
+                [originalOrder[0].tag]: 1,  // First account to second
+                [originalOrder[1].tag]: 2   // Middle account to last
+            }));
+
+            // 3. Verify new order but same indexes
+            state = store.getState();
+            const reorderedAccounts = Object.values(state.accounts.accounts)
+                .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)); // Sort by order property
+
+            // Check new order
+            expect(reorderedAccounts[0].tag).toBe(originalOrder[2].tag);
+            expect(reorderedAccounts[1].tag).toBe(originalOrder[0].tag);
+            expect(reorderedAccounts[2].tag).toBe(originalOrder[1].tag);
+
+            // Verify indexes remained unchanged
+            reorderedAccounts.forEach(account => {
+                const original = originalOrder.find(a => a.tag === account.tag);
+                expect(account.index).toBe(original?.index);
+            });
+
+            // 4. Verify persistence through lock/unlock
+            await store.dispatch(lockWalletAction());
+            await store.dispatch(unlockWalletAction(testPassword));
+
+            state = store.getState();
+            const persistedAccounts = Object.values(state.accounts.accounts)
+                .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)); // Sort by order property
+            
+            // Check order persisted
+            expect(persistedAccounts[0].tag).toBe(originalOrder[2].tag);
+            expect(persistedAccounts[1].tag).toBe(originalOrder[0].tag);
+            expect(persistedAccounts[2].tag).toBe(originalOrder[1].tag);
+
+            // 5. Try invalid reordering (missing account)
+            await expect(
+                store.dispatch(reorderAccountsAction({
+                    [originalOrder[0].tag]: 1,
+                    [originalOrder[1].tag]: 2
+                    // Missing one account
+                }))
+            ).rejects.toThrow();
+        });
+    });
+}); 

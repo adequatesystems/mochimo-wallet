@@ -1,52 +1,29 @@
 import { Storage } from '../../src/types/storage';
-import { Account } from '../../src/types/account';
 import { EncryptedData } from '../../src/crypto/encryption';
+import { Account } from '../../src/types';
 
 export class MockStorage implements Storage {
-    private data: {
+    private data: { 
         masterSeed?: EncryptedData;
-        accounts: Account[];
         activeAccount?: string;
+        accounts: Record<string, Account>;
         highestIndex: number;
     } = {
-        accounts: [],
+        accounts: {},
         highestIndex: -1
     };
 
-    async saveMasterSeed(encrypted: EncryptedData): Promise<void> {
-        this.data.masterSeed = encrypted;
-    }
-
-    async loadMasterSeed(): Promise<EncryptedData | null> {
-        return this.data.masterSeed || null;
-    }
-
     async saveAccount(account: Account): Promise<void> {
-        const index = this.data.accounts.findIndex(a => a.tag === account.tag);
-        if (index >= 0) {
-            this.data.accounts[index] = account;
-        } else {
-            this.data.accounts.push(account);
-        }
+        if (!account.tag) throw new Error('Account must have a tag');
+        this.data.accounts[account.tag] = account;
+    }
+
+    async loadAccount(id: string): Promise<Account | null> {
+        return this.data.accounts[id] || null;
     }
 
     async loadAccounts(): Promise<Account[]> {
-        return this.data.accounts;
-    }
-
-    async clear(): Promise<void> {
-        this.data = {
-            accounts: [],
-            highestIndex: -1
-        };
-    }
-
-    async saveActiveAccount(accountId: string): Promise<void> {
-        this.data.activeAccount = accountId;
-    }
-
-    async loadActiveAccount(): Promise<string | null> {
-        return this.data.activeAccount || null;
+        return Object.values(this.data.accounts);
     }
 
     async saveHighestIndex(index: number): Promise<void> {
@@ -57,12 +34,30 @@ export class MockStorage implements Storage {
         return this.data.highestIndex;
     }
 
-    async loadAccount(id: string): Promise<Account | null> {
-        const account = this.data.accounts.find(a => a.tag === id);
-        return account || null;
+    async deleteAccount(id: string): Promise<void> {
+        delete this.data.accounts[id];
     }
 
-    async deleteAccount(id: string): Promise<void> {
-        this.data.accounts = this.data.accounts.filter(a => a.tag !== id);
+    async saveMasterSeed(encryptedSeed: EncryptedData): Promise<void> {
+        this.data.masterSeed = encryptedSeed;
+    }
+
+    async loadMasterSeed(): Promise<EncryptedData | null> {
+        return this.data.masterSeed || null;
+    }
+
+    async saveActiveAccount(tag: string): Promise<void> {
+        this.data.activeAccount = tag;
+    }
+
+    async loadActiveAccount(): Promise<string | null> {
+        return this.data.activeAccount || null;
+    }
+
+    async clear(): Promise<void> {
+        this.data = {
+            accounts: {},
+            highestIndex: -1
+        };
     }
 } 
