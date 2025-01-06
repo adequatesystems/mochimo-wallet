@@ -1,13 +1,12 @@
 import { generateSeed, wipeBytes } from '../crypto/random';
-import { deriveAccountSeed, deriveAccountTag, createWOTSWallet } from '../crypto/kdf';
+import { createWOTSWallet } from '../crypto/kdf';
 import { WOTS, WOTSWallet } from 'mochimo-wots-v2';
-import { encrypt, decrypt, EncryptedData } from '../crypto/encryption';
+import { EncryptedData } from '../crypto/encryption';
 
 import * as bip39 from '@scure/bip39';
 import { wordlist } from '@scure/bip39/wordlists/english';
-import { DigestRandomGenerator, wordArrayToBytes } from '@/crypto/digestRandomGenerator';
 import { Derivation } from '../redux/utils/derivation';
-import { createHash, createHmac } from 'crypto';
+import CryptoJS from 'crypto-js';
 
 const PBKDF2_ITERATIONS = process.env.NODE_ENV === 'test' ? 1000 : 100000;
 
@@ -183,7 +182,7 @@ export class MasterSeed {
 
         const salt = crypto.getRandomValues(new Uint8Array(16));
         const iv = crypto.getRandomValues(new Uint8Array(16));
-        
+
         const key = await crypto.subtle.importKey(
             'raw',
             new TextEncoder().encode(password),
@@ -273,22 +272,31 @@ export class MasterSeed {
             throw new Error('Master seed is locked');
         }
 
-        // Initial hash with a domain separator
-        const initialHash = createHash('sha256')
-            .update('mochimo_storage_key_v1')
-            .update(this.seed)
-            .digest();
+        // Convert seed to WordArray
+        const seedWordArray = CryptoJS.enc.Hex.parse(
+            Buffer.from(this.seed).toString('hex')
+        );
 
-        // Use HMAC for the extraction step
-        const prk = createHmac('sha256', 'mochimo_storage_salt')
-            .update(initialHash)
-            .digest();
+        // Initial hash with domain separator
+        const initialHash = CryptoJS.SHA256(
+            CryptoJS.enc.Utf8.parse('mochimo_storage_key_v1').concat(seedWordArray)
+        );
+
+        // HMAC extraction step
+        const prk = CryptoJS.HmacSHA256(
+            initialHash,
+            'mochimo_storage_salt'
+        );
 
         // Expansion step
-        const storageKey = createHmac('sha256', prk)
-            .update('mochimo_storage_info')
-            .digest();
+        const storageKey = CryptoJS.HmacSHA256(
+            'mochimo_storage_info',
+            prk
+        );
 
-        return new Uint8Array(storageKey);
+        // Convert WordArray to Uint8Array
+        return new Uint8Array(
+            Buffer.from(storageKey.toString(CryptoJS.enc.Hex), 'hex')
+        );
     }
 }
