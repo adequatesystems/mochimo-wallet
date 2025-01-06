@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from './useStore';
-import { sendTransactionAction } from '../actions/transactionActions';
-
+import { sendTransactionAction,  } from '../actions/transactionActions';
+import { removePendingTransaction } from '../slices/transactionSlice';
 
 export const useTransaction = () => {
     const dispatch = useAppDispatch();
@@ -16,11 +16,14 @@ export const useTransaction = () => {
     ) => {
         return dispatch(sendTransactionAction({ to, amount, tag })).unwrap();
     }, [dispatch]);
-
+    const removePending = useCallback((txHash: string) => {
+        dispatch(removePendingTransaction(txHash));
+    }, [dispatch]);
     return {
         isLoading,
         error,
         pendingTransactions,
-        sendTransaction
+        sendTransaction,
+        removePending
     };
 }; 
