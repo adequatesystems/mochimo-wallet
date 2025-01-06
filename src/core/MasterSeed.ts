@@ -157,6 +157,25 @@ export class MasterSeed {
         return Derivation.deriveAccountTag(this.seed, accountIndex);
     }
 
+    public static deriveWotsIndexFromWotsAddress(accountSeed: Uint8Array, wotsAddress: Uint8Array): number {
+        if (!accountSeed) throw new Error('Account seed is empty');
+        //tag bytes are the last 12 bytes of wotsaddress
+        const tagBytes = wotsAddress.slice(-12);
+        const tag = Buffer.from(tagBytes).toString('hex');
+
+        let ret: number = -1
+        for (let i = 0; i < 10000; i++) {
+            console.log('Creating WOTS wallet for index', i);
+            const w = Derivation.deriveWotsSeedAndAddress(accountSeed, i, tag);
+            if (Buffer.from(w.address).toString('hex') === Buffer.from(wotsAddress).toString('hex')) {
+                ret = i;
+                break;
+            }
+        }
+        return ret;
+    }
+
+
     /**
      * Creates a WOTS wallet for the given account and WOTS indices
      * @throws Error if the master seed is locked

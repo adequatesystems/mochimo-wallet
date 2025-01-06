@@ -63,5 +63,6 @@ export class Derivation {
         });
         return { secret: secret.secret, address: address };
     }
+
 }
 

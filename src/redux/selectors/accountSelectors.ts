@@ -47,10 +47,7 @@ export const selectNextWOTSKeyPair = createSelector(
     [selectSelectedAccount],
     (account) => {
         if (!account) return null;
-        if (account.wotsIndex === -1) {
-            // For first use, return null since we don't need a change address yet
-            return null;
-        }
+
 
         if (!account.seed) {
             throw new Error('Account has no seed');
