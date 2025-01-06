@@ -5,129 +5,99 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { useAccounts } from '../../../../src/redux/hooks/useAccounts';
 import walletReducer from '../../../../src/redux/slices/walletSlice';
 import accountReducer from '../../../../src/redux/slices/accountSlice';
-import networkReducer from '../../../../src/redux/slices/networkSlice';
-import transactionReducer from '../../../../src/redux/slices/transactionSlice';
 import { StorageProvider } from '../../../../src/redux/context/StorageContext';
-import { NetworkProvider } from '../../../../src/redux/context/NetworkContext';
+import { SessionManager } from '../../../../src/redux/context/SessionContext';
 import { MockStorage } from '../../../mocks/MockStorage';
-import { createWalletAction } from '../../../../src/redux/actions/walletActions';
-import { createAccountAction } from '../../../../src/redux/actions/walletActions';
-import { renameAccountAction, reorderAccountsAction } from '../../../../src/redux/actions/accountActions';
+import { MasterSeed } from '../../../../src/core/MasterSeed';
 import React from 'react';
 
 describe('useAccounts', () => {
     const mockStorage = new MockStorage();
-    const testPassword = 'test-password';
-
-    const mockNetworkService = {
-        activateTag: vi.fn().mockResolvedValue({ status: 'success' }),
-        resolveTag: vi.fn().mockImplementation(async () => ({
-            addressConsensus: '0'.repeat(64),
-            balanceConsensus: '1000000',
-            status: 'success'
-        })),
-        pushTransaction: vi.fn(),
-        getNetworkStatus: vi.fn().mockReturnValue('connected')
+    const mockMasterSeed = new MasterSeed(Buffer.from('test'));
+    const mockSession = {
+        getMasterSeed: vi.fn().mockReturnValue(mockMasterSeed),
+        unlock: vi.fn(),
+        lock: vi.fn()
     };
 
     beforeEach(() => {
         StorageProvider.setStorage(mockStorage);
-        NetworkProvider.setNetwork(mockNetworkService);
-        vi.clearAllMocks();
+        vi.spyOn(SessionManager, 'getInstance').mockReturnValue(mockSession as any);
     });
 
-    const setupStore = async () => {
-        const store = configureStore({
+    const setupStore = () => {
+        return configureStore({
             reducer: {
                 wallet: walletReducer,
-                accounts: accountReducer,
-                network: networkReducer,
-                transaction: transactionReducer
+                accounts: accountReducer
             },
-            preloadedState: {
-                wallet: {
-                    hasWallet: true,
-                    initialized: true,
-                    locked: false,
-                    error: null,
-                    network: 'mainnet',
-                    highestAccountIndex: -1,
-                    activeAccount: null
-                },
-                accounts: {
-                    accounts: {}
-                }
-            }
+            middleware: (getDefaultMiddleware) => getDefaultMiddleware()
         });
-
-        // Create wallet first
-        await store.dispatch(createWalletAction({ password: testPassword }));
-
-        return store;
     };
 
     it('should create and manage accounts', async () => {
-        const store = await setupStore();
-
+        const store = setupStore();
         const wrapper = ({ children }: { children: React.ReactNode }) => (
             <Provider store={store}>{children}</Provider>
         );
 
         const { result } = renderHook(() => useAccounts(), { wrapper });
 
-        // Create account
+        // Create first account
         await act(async () => {
             await result.current.createAccount('Test Account 1');
+            await new Promise(resolve => setTimeout(resolve, 0));
         });
 
-        // Verify account was created
         expect(result.current.accounts).toHaveLength(1);
         expect(result.current.accounts[0].name).toBe('Test Account 1');
 
-        // Rename account
-        const accountId = result.current.accounts[0].tag;
-        await act(async () => {
-            await result.current.renameAccount(accountId, 'Renamed Account');
-        });
-
-        // Verify rename
-        expect(result.current.accounts[0].name).toBe('Renamed Account');
-
-        // Create another account and test reordering
+        // Create second account
         await act(async () => {
             await result.current.createAccount('Test Account 2');
+            await new Promise(resolve => setTimeout(resolve, 0));
         });
 
-        const accounts = result.current.accounts;
+        expect(result.current.accounts).toHaveLength(2);
+        expect(result.current.accounts[1].name).toBe('Test Account 2');
+
+        // Rename first account
+        await act(async () => {
+            await result.current.renameAccount(result.current.accounts[0].tag, 'Renamed Account');
+            await new Promise(resolve => setTimeout(resolve, 0));
+        });
+
+        expect(result.current.accounts[0].name).toBe('Renamed Account');
+
+        // Reorder accounts
         await act(async () => {
             await result.current.reorderAccounts({
-                [accounts[0].tag]: 1,
-                [accounts[1].tag]: 0
+                [result.current.accounts[0].tag]: 1,
+                [result.current.accounts[1].tag]: 0
             });
+            await new Promise(resolve => setTimeout(resolve, 0));
         });
 
-        // Verify reordering
         expect(result.current.accounts[0].name).toBe('Test Account 2');
         expect(result.current.accounts[1].name).toBe('Renamed Account');
     });
 
     it('should handle errors gracefully', async () => {
-        const store = await setupStore();
-
+        const store = setupStore();
         const wrapper = ({ children }: { children: React.ReactNode }) => (
             <Provider store={store}>{children}</Provider>
         );
 
         const { result } = renderHook(() => useAccounts(), { wrapper });
 
-        // Test error on non-existent account
+        // Test error on non-existent account rename
         await act(async () => {
             await expect(
                 result.current.renameAccount('nonexistent', 'New Name')
             ).rejects.toThrow();
         });
 
-        // Test error on invalid reorder
+        // Create an account then test invalid reorder
         await act(async () => {
             await result.current.createAccount('Test Account');
             await expect(
