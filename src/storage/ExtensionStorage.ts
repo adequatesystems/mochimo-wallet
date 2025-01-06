@@ -7,8 +7,8 @@ export class ExtensionStorage implements Storage {
     private storage: StorageArea;
     private prefix: string;
 
-    constructor(storage: StorageArea = getStorageArea(), prefix: string = 'mochimo_wallet_') {
-        this.storage = storage;
+    constructor(prefix: string = 'mochimo_wallet_') {
+        this.storage = getStorageArea();
         this.prefix = prefix;
     }
 

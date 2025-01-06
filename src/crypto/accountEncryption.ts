@@ -25,6 +25,5 @@ export const decryptAccount = async (
 ): Promise<Account> => {
     const decryptedData = await decrypt(encryptedAccount.encryptedData, Buffer.from(storageKey).toString('hex'));
     const decryptedString = Buffer.from(decryptedData).toString('utf-8');
-    console.log('Decrypted string:', decryptedString);
     return JSON.parse(decryptedString );
 }; 
