@@ -7,6 +7,7 @@ import walletReducer from '../../../../src/redux/slices/walletSlice';
 import { StorageProvider } from '../../../../src/redux/context/StorageContext';
 import { MockStorage } from '../../../mocks/MockStorage';
 import React from 'react';
+
 describe('useWallet', () => {
     const mockStorage = new MockStorage();
     
@@ -18,7 +19,8 @@ describe('useWallet', () => {
         return configureStore({
             reducer: {
                 wallet: walletReducer
-            }
+            },
+            middleware: (getDefaultMiddleware) => getDefaultMiddleware()
         });
     };
 
@@ -47,42 +49,61 @@ describe('useWallet', () => {
 
     it('should handle wallet locking', async () => {
         const store = setupStore();
-        const wrapper = ({ children }) => (
+        const wrapper = ({ children }: { children: React.ReactNode }) => (
             <Provider store={store}>{children}</Provider>
         );
 
         const { result } = renderHook(() => useWallet(), { wrapper });
 
-        // Create and verify locked state
+        // Create wallet
         await act(async () => {
-            await result.current.createWallet('password123').unwrap();
+            const response = await result.current.createWallet('password123');
+            expect(response.type).toBe('wallet/create/fulfilled');
+            // Wait for state updates
+            await new Promise(resolve => setTimeout(resolve, 0));
         });
-        expect(result.current.isLocked).toBe(true);
 
-        // Unlock
+        // Verify initial state
+        await act(async () => {
+            expect(result.current.isLocked).toBe(true);
+        });
+
+        // Unlock wallet
         await act(async () => {
             await result.current.unlockWallet('password123');
+            // Wait for state updates
+            await new Promise(resolve => setTimeout(resolve, 0));
         });
-        expect(result.current.isLocked).toBe(false);
 
-        // Lock
-        await act(() => {
-            result.current.lockWallet();
+        // Verify unlocked state
+        await act(async () => {
+            expect(result.current.isLocked).toBe(false);
         });
-        expect(result.current.isLocked).toBe(true);
+
+        // Lock wallet
+        await act(async () => {
+            result.current.lockWallet();
+            // Wait for state updates
+            await new Promise(resolve => setTimeout(resolve, 0));
+        });
+
+        // Verify locked state
+        await act(async () => {
+            expect(result.current.isLocked).toBe(true);
+        });
     });
 
     it('should handle invalid mnemonic', async () => {
         const store = setupStore();
-        const wrapper = ({ children }) => (
+        const wrapper = ({ children }: { children: React.ReactNode }) => (
             <Provider store={store}>{children}</Provider>
         );
 
         const { result } = renderHook(() => useWallet(), { wrapper });
 
         await act(async () => {
-            const promise = result.current.createWallet('password123', 'invalid mnemonic');
-            await expect(promise).rejects.toThrow();
+            const response = await result.current.createWallet('password123', 'invalid mnemonic');
+            expect(response.type).toBe('wallet/create/rejected');
         });
     });
 }); 
