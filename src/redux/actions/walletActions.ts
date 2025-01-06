@@ -23,35 +23,31 @@ import { DecodeResult, MCMDecoder } from '@/crypto/mcmDecoder';
 // Create new wallet
 export const createWalletAction = createAsyncThunk(
     'wallet/create',
-    async ({ password, mnemonic }: { password: string; mnemonic?: string }, { dispatch }) => {
+    async ({ password, mnemonic }: { password: string; mnemonic?: string }, { dispatch, rejectWithValue }) => {
         try {
-            dispatch(setError(null));
             let masterSeed: MasterSeed;
+            let generatedMnemonic: string | undefined;
+
             if (mnemonic) {
                 masterSeed = await MasterSeed.fromPhrase(mnemonic);
             } else {
                 masterSeed = await MasterSeed.create();
+                generatedMnemonic = await masterSeed.toPhrase();
             }
 
-            // Encrypt and store if storage is provided
             const storage = StorageProvider.getStorage();
-            if (storage) {
-                const encrypted = await masterSeed.export(password);
-                await storage.saveMasterSeed(encrypted);
-            }
+            const encrypted = await masterSeed.export(password);
+            await storage.saveMasterSeed(encrypted);
 
-            // Initialize session
-            const session = SessionManager.getInstance();
-            await session.unlock(password, storage);
-
-            // Set wallet states in correct order
+            // Set wallet state
             dispatch(setHasWallet(true));
             dispatch(setInitialized(true));
-            dispatch(setLocked(false));
+            dispatch(setLocked(true));
 
+            return { mnemonic: generatedMnemonic };
         } catch (error) {
-            dispatch(setError(error instanceof Error ? error.message : 'Unknown error'));
-            throw error;
+            dispatch(setError('Failed to create wallet'));
+            return rejectWithValue('Failed to create wallet');
         }
     }
 );
@@ -219,10 +215,14 @@ export const loadWalletJSONAction = (
     }
 };
 
-export const lockWalletAction = (): AppThunk<void> => async (dispatch) => {
-    const session = SessionManager.getInstance();
-    session.lock();
-    dispatch(setLocked(true));
+export const lockWalletAction = (): AppThunk => async (dispatch) => {
+    try {
+        const session = SessionManager.getInstance();
+        await session.lock();
+        dispatch(setLocked(true));
+    } catch (error) {
+        dispatch(setError('Failed to lock wallet'));
+    }
 };
 
 export const setSelectedAccountAction = (
