@@ -16,6 +16,8 @@ import { MasterSeed } from '../../core/MasterSeed';
 import { AppThunk } from '../store';
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { RootState } from '../store';
+import { MCMDecoder } from '@/crypto/mcmDecoder';
+
 
 
 // Create new wallet
@@ -30,7 +32,7 @@ export const createWalletAction = createAsyncThunk(
             } else {
                 masterSeed = await MasterSeed.create();
             }
-    
+
             // Encrypt and store if storage is provided
             const storage = StorageProvider.getStorage();
             if (storage) {
@@ -41,7 +43,7 @@ export const createWalletAction = createAsyncThunk(
             // Initialize session
             const session = SessionManager.getInstance();
             await session.unlock(password, storage);
-            
+
             // Set wallet states in correct order
             dispatch(setHasWallet(true));
             dispatch(setInitialized(true));
@@ -127,7 +129,7 @@ export const createAccountAction = (name?: string): AppThunk<Account> => async (
             order: Object.keys(state.accounts.accounts).length // Use index as initial order
         };
 
-        console.log(account);
+
 
         await Promise.all([
             storage.saveAccount(account),
@@ -240,4 +242,72 @@ export const setSelectedAccountAction = (
         dispatch(setError('Failed to set active account'));
         throw error;
     }
-}; 
+};
+
+export const importFromMcmFileAction = createAsyncThunk(
+    'wallet/importFromMcm',
+    async ({ mcmData, password }: { mcmData: ArrayBuffer; password: string }, { dispatch }) => {
+        try {
+            dispatch(setError(null));
+
+            // 1. Clear any existing state/storage
+            const storage = StorageProvider.getStorage();
+            await storage.clear();
+
+            // 2. Decode MCM file
+            const { entries, privateHeader } = await MCMDecoder.decode(mcmData, password);
+            const detSeed = privateHeader['deterministic seed hex'];
+
+            // 3. Create master seed and initialize session
+            const masterSeed = new MasterSeed(Buffer.from(detSeed, 'hex')); 
+            const session = SessionManager.getInstance();
+            
+            // 4. Save encrypted master seed to storage using the same password
+            const encrypted = await masterSeed.export(password);
+            await storage.saveMasterSeed(encrypted);
+
+            // 5. Set session state directly to avoid re-encryption
+            session.setMasterSeed(masterSeed);
+
+            // 6. Update wallet state
+            dispatch(setHasWallet(true));
+            dispatch(setInitialized(true));
+            dispatch(setLocked(false));
+
+            // 7. Create and save accounts
+            const accounts = entries.map((entry, index) => ({
+                name: entry.name || `Account ${index + 1}`,
+                type: 'standard' as const,
+                faddress: entry.address,
+                balance: '0',
+                index: index,
+                tag: entry.address.slice(-24),
+                source: 'mnemonic' as const,
+                wotsIndex: 0,
+                seed: entry.secret,
+                order: index
+            }));
+
+            // 8. Save accounts
+            await Promise.all([
+                ...accounts.map(account => storage.saveAccount(account)),
+                storage.saveHighestIndex(accounts.length - 1)
+            ]);
+
+            // 9. Update account state
+            dispatch(setHighestIndex(accounts.length - 1));
+            dispatch(bulkAddAccounts(
+                accounts.reduce((acc, account) => {
+                    acc[account.tag] = account;
+                    return acc;
+                }, {} as Record<string, Account>)
+            ));
+
+            return { masterSeed, entries };
+        } catch (error) {
+            console.error('Import error:', error);
+            dispatch(setError(error instanceof Error ? error.message : 'Unknown error'));
+            throw error;
+        }
+    }
+); 

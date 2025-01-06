@@ -11,6 +11,7 @@ export interface PublicHeader {
 
 export interface PrivateHeader {
     name: string;
+    'deterministic seed hex': string;
 }
 
 export interface WOTSEntry {

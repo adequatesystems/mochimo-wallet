@@ -20,7 +20,7 @@ export class MasterSeed {
     private _isLocked: boolean = true;
     private encryptedSeed?: EncryptedData;  // Store encrypted seed for password verification
 
-    private constructor(seed: Uint8Array, entropy?: Uint8Array) {
+    public constructor(seed: Uint8Array, entropy?: Uint8Array) {
         this.seed = seed;
         this.entropy = entropy;
         this._isLocked = false;
@@ -33,6 +33,7 @@ export class MasterSeed {
         const seed = generateSeed();
         return new MasterSeed(seed);
     }
+
 
     /**
      * Creates a master seed from a BIP39 mnemonic phrase

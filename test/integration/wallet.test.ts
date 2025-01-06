@@ -4,19 +4,21 @@ import walletReducer from '../../src/redux/slices/walletSlice';
 import accountReducer from '../../src/redux/slices/accountSlice';
 import networkReducer from '../../src/redux/slices/networkSlice';
 import transactionReducer from '../../src/redux/slices/transactionSlice';
-import { createWalletAction, lockWalletAction, unlockWalletAction, createAccountAction } from '../../src/redux/actions/walletActions';
+import { createWalletAction, lockWalletAction, unlockWalletAction, createAccountAction, importFromMcmFileAction } from '../../src/redux/actions/walletActions';
 import { renameAccountAction, reorderAccountsAction } from '../../src/redux/actions/accountActions';
 import { SessionManager } from '../../src/redux/context/SessionContext';
 import { NetworkProvider } from '../../src/redux/context/NetworkContext';
 import { StorageProvider } from '../../src/redux/context/StorageContext';
 import { MockStorage } from '../mocks/MockStorage';
 import { AppStore } from '../../src/redux/store';
+import fs from 'fs/promises';
+import path from 'path';
 
 
 describe('Wallet Integration', () => {
     let store: AppStore;
     let mockStorage: MockStorage;
-    const testPassword = 'testPassword123';
+    let testPassword = 'testPassword123';
 
     const mockNetworkService = {
         activateTag: vi.fn().mockResolvedValue({ status: 'success' }),
@@ -46,6 +48,8 @@ describe('Wallet Integration', () => {
                 transaction: transactionReducer
             }
         });
+        testPassword = 'testPassword123';
+
     });
 
     afterEach(() => {
@@ -224,6 +228,51 @@ describe('Wallet Integration', () => {
                     // Missing one account
                 }))
             ).rejects.toThrow();
+        });
+
+        it.only('should import wallet from MCM file', async () => {
+            const mcmPassword = 'kandokando'; // MCM file password
+            
+            // 1. Read MCM file from fixtures
+            const mcmPath = path.join(__dirname, '../fixtures/test.mcm');
+            const mcmData = await fs.readFile(mcmPath);
+            
+            // 2. Import wallet using MCM password
+            await store.dispatch(importFromMcmFileAction({
+                mcmData: mcmData,
+                password: mcmPassword
+            }));
+
+            // 3. Verify wallet was imported
+            let state = store.getState();
+            expect(state.wallet.hasWallet).toBe(true);
+            expect(state.wallet.initialized).toBe(true);
+            expect(state.wallet.locked).toBe(false);
+
+            // 4. Verify imported accounts
+            const accounts = Object.values(state.accounts.accounts);
+            expect(accounts).toHaveLength(3); // Assuming test MCM has 3 accounts
+
+            // 5. Verify specific account details from the MCM
+            const mainAccount = accounts.find(a => a.name === 'acc1');
+            expect(mainAccount).toBeDefined();
+            expect(mainAccount?.type).toBe('standard');
+            expect(mainAccount?.tag).toBe('0180d3413d6f6c82047831da');
+
+
+            // 6. Test lock/unlock with same MCM password
+            await store.dispatch(lockWalletAction());
+            state = store.getState();
+            expect(state.wallet.locked).toBe(true);
+
+            await store.dispatch(unlockWalletAction(mcmPassword)); // Use MCM password here
+            state = store.getState();
+            expect(state.wallet.locked).toBe(false);
+
+            // 7. Verify accounts persist after unlock
+            const persistedAccounts = Object.values(state.accounts.accounts);
+            expect(persistedAccounts).toHaveLength(3);
+            expect(persistedAccounts.find(a => a.name === 'Main')).toBeDefined();
         });
     });
 }); 

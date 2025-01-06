@@ -24,7 +24,7 @@ export class SessionManager {
         }
     }
 
-    async getMasterSeed(): MasterSeed {
+     getMasterSeed(): MasterSeed {
         if (!this.masterSeed) throw new Error('Wallet is locked');
         return this.masterSeed;
     }
@@ -34,5 +34,9 @@ export class SessionManager {
             this.masterSeed.lock();
             this.masterSeed = null;
         }
+    }
+
+    setMasterSeed(masterSeed: MasterSeed): void {
+        this.masterSeed = masterSeed;
     }
 } 
