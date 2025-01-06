@@ -3,6 +3,7 @@ export * from './types';
 
 // Export core implementations
 export { HDWallet } from './core/HDWallet';
-export { Account } from './types/account';
 export { MasterSeed } from './core/MasterSeed';
-export * from './providers/WalletProvider';
+export * from './redux/provider';
+export * from './redux/hooks';
+export * from './redux/store'
