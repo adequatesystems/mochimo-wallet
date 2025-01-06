@@ -7,7 +7,6 @@ import {
 
 } from '../slices/walletSlice';
 import { addAccount, bulkAddAccounts, setSelectedAccount } from '../slices/accountSlice';
-import { HDWallet } from '../../core/HDWallet';
 import { StorageProvider } from '../context/StorageContext';
 import { SessionManager } from '../context/SessionContext';
 import { Account } from '../../types/account';
@@ -16,7 +15,7 @@ import { MasterSeed } from '../../core/MasterSeed';
 import { AppThunk } from '../store';
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { RootState } from '../store';
-import { DecodeResult, MCMDecoder } from '@/crypto/mcmDecoder';
+import { DecodeResult } from '@/crypto/mcmDecoder';
 
 
 
@@ -52,20 +51,6 @@ export const createWalletAction = createAsyncThunk(
     }
 );
 
-// Load wallet
-export const loadWalletAction = (password: string): AppThunk => async (dispatch) => {
-    try {
-        const storage = StorageProvider.getStorage();
-        const wallet = await HDWallet.load(password, storage);
-        const activeAccount = await storage.loadActiveAccount();
-        dispatch(setHasWallet(wallet.getAccounts().length > 0));
-        dispatch(setLocked(true));
-        dispatch(setSelectedAccount(activeAccount));
-        dispatch(setInitialized(true));
-    } catch (error) {
-        dispatch(setError('Failed to load wallet'));
-    }
-};
 
 // Unlock wallet
 export const unlockWalletAction = (password: string): AppThunk => async (dispatch) => {
@@ -76,9 +61,10 @@ export const unlockWalletAction = (password: string): AppThunk => async (dispatc
         await session.unlock(password, storage);
 
         // Load accounts and highest index
-        const [accounts, highestIndex] = await Promise.all([
+        const [accounts, highestIndex, activeAccount] = await Promise.all([
             storage.loadAccounts(),
-            storage.loadHighestIndex()
+            storage.loadHighestIndex(),
+            storage.loadActiveAccount()
         ]);
 
         const accountsObject = accounts.reduce((acc, account) => {
@@ -87,9 +73,9 @@ export const unlockWalletAction = (password: string): AppThunk => async (dispatc
             }
             return acc;
         }, {} as Record<string, Account>);
-
         dispatch(bulkAddAccounts(accountsObject));
         dispatch(setHighestIndex(highestIndex));
+        dispatch(setSelectedAccount(activeAccount));
         dispatch(setLocked(false));
     } catch (error) {
         dispatch(setError('Invalid password'));
