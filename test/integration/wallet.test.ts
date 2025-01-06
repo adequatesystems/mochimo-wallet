@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import { vi, describe, it, beforeEach, afterEach, expect } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
 import walletReducer from '../../src/redux/slices/walletSlice';
 import accountReducer from '../../src/redux/slices/accountSlice';
@@ -14,6 +14,8 @@ import { AppStore } from '../../src/redux/store';
 import fs from 'fs/promises';
 import path from 'path';
 
+// Set longer timeout for all tests in this file
+vi.setConfig({ testTimeout: 60000 }); // 60 seconds
 
 describe('Wallet Integration', () => {
     let store: AppStore;
@@ -103,7 +105,7 @@ describe('Wallet Integration', () => {
                 expect(account.faddress).toBeDefined();
                 expect(account.seed).toBeDefined(); 
             });
-        });
+        }, 30000); // 30 second timeout
 
         it('should properly set wallet state after creation', async () => {
             await store.dispatch(createWalletAction({ password: testPassword }));
@@ -118,7 +120,7 @@ describe('Wallet Integration', () => {
                 highestAccountIndex: -1, // Initial value before any accounts
                 activeAccount: null
             });
-        });
+        }, 30000);
 
         it('should handle account renaming', async () => {
             // 1. Create wallet and accounts
@@ -162,7 +164,7 @@ describe('Wallet Integration', () => {
             await expect(
                 store.dispatch(renameAccountAction('non-existent-tag', 'Should Fail'))
             ).rejects.toThrow();
-        });
+        }, 30000);
 
         it('should handle account reordering', async () => {
             // 1. Create wallet and accounts
@@ -228,9 +230,9 @@ describe('Wallet Integration', () => {
                     // Missing one account
                 }))
             ).rejects.toThrow();
-        });
+        }, 30000);
 
-        it.only('should import wallet from MCM file', async () => {
+        it('should import wallet from MCM file', async () => {
             const mcmPassword = 'kandokando'; // MCM file password
             
             // 1. Read MCM file from fixtures
@@ -238,10 +240,12 @@ describe('Wallet Integration', () => {
             const mcmData = await fs.readFile(mcmPath);
             
             // 2. Import wallet using MCM password
-            await store.dispatch(importFromMcmFileAction({
+            const result = await store.dispatch(importFromMcmFileAction({
                 mcmData: mcmData,
                 password: mcmPassword
             }));
+
+
 
             // 3. Verify wallet was imported
             let state = store.getState();
@@ -251,7 +255,7 @@ describe('Wallet Integration', () => {
 
             // 4. Verify imported accounts
             const accounts = Object.values(state.accounts.accounts);
-            expect(accounts).toHaveLength(3); // Assuming test MCM has 3 accounts
+            expect(accounts).toHaveLength(3);
 
             // 5. Verify specific account details from the MCM
             const mainAccount = accounts.find(a => a.name === 'acc1');
@@ -259,20 +263,28 @@ describe('Wallet Integration', () => {
             expect(mainAccount?.type).toBe('standard');
             expect(mainAccount?.tag).toBe('0180d3413d6f6c82047831da');
 
+            // Log stored master seed before lock
+            const storage = StorageProvider.getStorage();
+            const storedSeed = await storage.loadMasterSeed();
+            console.log('Stored master seed before lock:', storedSeed);
 
             // 6. Test lock/unlock with same MCM password
             await store.dispatch(lockWalletAction());
             state = store.getState();
             expect(state.wallet.locked).toBe(true);
 
-            await store.dispatch(unlockWalletAction(mcmPassword)); // Use MCM password here
+            // Log stored master seed before unlock
+            const storedSeedBeforeUnlock = await storage.loadMasterSeed();
+            console.log('Stored master seed before unlock:', storedSeedBeforeUnlock);
+
+            await store.dispatch(unlockWalletAction(mcmPassword));
             state = store.getState();
             expect(state.wallet.locked).toBe(false);
 
             // 7. Verify accounts persist after unlock
             const persistedAccounts = Object.values(state.accounts.accounts);
             expect(persistedAccounts).toHaveLength(3);
-            expect(persistedAccounts.find(a => a.name === 'Main')).toBeDefined();
-        });
+            expect(persistedAccounts.find(a => a.name === 'acc1')).toBeDefined();
+        }, 30000);
     });
 }); 

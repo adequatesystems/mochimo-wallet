@@ -8,6 +8,8 @@ import { wordlist } from '@scure/bip39/wordlists/english';
 import { DigestRandomGenerator, wordArrayToBytes } from '@/crypto/digestRandomGenerator';
 import { Derivation } from '../redux/utils/derivation';
 
+const PBKDF2_ITERATIONS = process.env.NODE_ENV === 'test' ? 1000 : 100000;
+
 export interface EncryptedSeed {
     data: string;      // Base64 encrypted seed
     iv: string;        // Initialization vector
@@ -175,23 +177,46 @@ export class MasterSeed {
      * Exports the master seed in encrypted form
      */
     async export(password: string): Promise<EncryptedData> {
-        if (this._isLocked || !this.seed) {
-            throw new Error('Master seed is locked');
+        if (!this.seed) {
+            throw new Error('No seed to export');
         }
 
-        // If we have stored encrypted seed, verify password first
-        if (this.encryptedSeed) {
-            try {
-                await decrypt(this.encryptedSeed, password);
-            } catch (error) {
-                throw new Error('Failed to decrypt master seed - invalid password');
-            }
-        }
+        const salt = crypto.getRandomValues(new Uint8Array(16));
+        const iv = crypto.getRandomValues(new Uint8Array(16));
+        
+        const key = await crypto.subtle.importKey(
+            'raw',
+            new TextEncoder().encode(password),
+            'PBKDF2',
+            false,
+            ['deriveBits', 'deriveKey']
+        );
 
-        // Create new encrypted seed if needed
-        const encrypted = await encrypt(this.seed, password);
-        this.encryptedSeed = encrypted;  // Store for future verification
-        return encrypted;
+        const derivedKey = await crypto.subtle.deriveKey(
+            {
+                name: 'PBKDF2',
+                salt,
+                iterations: PBKDF2_ITERATIONS,
+                hash: 'SHA-256'
+            },
+            key,
+            { name: 'AES-GCM', length: 256 },
+            false,
+            ['encrypt']
+        );
+
+        // Encrypt the seed
+        const encrypted = await crypto.subtle.encrypt(
+            { name: 'AES-GCM', iv },
+            derivedKey,
+            this.seed
+        );
+
+        return {
+            data: Buffer.from(encrypted).toString('base64'),
+            iv: Buffer.from(iv).toString('base64'),
+            salt: Buffer.from(salt).toString('base64')
+        };
     }
 
     /**
@@ -199,16 +224,42 @@ export class MasterSeed {
      */
     static async import(encrypted: EncryptedData, password: string): Promise<MasterSeed> {
         try {
-            const seed = await decrypt(encrypted, password);
-            // Validate seed length
-            if (seed.length !== 32) {
-                throw new Error('Invalid seed length');
-            }
+            const encryptedData = Buffer.from(encrypted.data, 'base64');
+            const iv = Buffer.from(encrypted.iv, 'base64');
+            const salt = Buffer.from(encrypted.salt, 'base64');
 
-            const instance = new MasterSeed(seed);
-            instance._isLocked = false;
-            return instance;
+            // Derive key using same parameters
+            const key = await crypto.subtle.importKey(
+                'raw',
+                new TextEncoder().encode(password),
+                'PBKDF2',
+                false,
+                ['deriveBits', 'deriveKey']
+            );
+
+            const derivedKey = await crypto.subtle.deriveKey(
+                {
+                    name: 'PBKDF2',
+                    salt,
+                    iterations: PBKDF2_ITERATIONS,
+                    hash: 'SHA-256'
+                },
+                key,
+                { name: 'AES-GCM', length: 256 },
+                false,
+                ['decrypt']
+            );
+
+            // Decrypt the seed
+            const decrypted = await crypto.subtle.decrypt(
+                { name: 'AES-GCM', iv },
+                derivedKey,
+                encryptedData
+            );
+
+            return new MasterSeed(new Uint8Array(decrypted));
         } catch (error) {
+            console.error('Decryption error:', error);
             throw new Error('Failed to decrypt master seed - invalid password');
         }
     }

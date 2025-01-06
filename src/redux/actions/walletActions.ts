@@ -258,15 +258,16 @@ export const importFromMcmFileAction = createAsyncThunk(
             const { entries, privateHeader } = await MCMDecoder.decode(mcmData, password);
             const detSeed = privateHeader['deterministic seed hex'];
 
-            // 3. Create master seed and initialize session
+            // 3. Create master seed
             const masterSeed = new MasterSeed(Buffer.from(detSeed, 'hex')); 
-            const session = SessionManager.getInstance();
-            
+
             // 4. Save encrypted master seed to storage using the same password
             const encrypted = await masterSeed.export(password);
+            console.log('Saving encrypted seed:', encrypted);
             await storage.saveMasterSeed(encrypted);
 
-            // 5. Set session state directly to avoid re-encryption
+            // 5. Set session state directly
+            const session = SessionManager.getInstance();
             session.setMasterSeed(masterSeed);
 
             // 6. Update wallet state
@@ -303,7 +304,7 @@ export const importFromMcmFileAction = createAsyncThunk(
                 }, {} as Record<string, Account>)
             ));
 
-            return { masterSeed, entries };
+            return { entries }; // Only return entries, not masterSeed
         } catch (error) {
             console.error('Import error:', error);
             dispatch(setError(error instanceof Error ? error.message : 'Unknown error'));
