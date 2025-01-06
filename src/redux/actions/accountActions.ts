@@ -4,7 +4,8 @@ import { setError } from '../slices/walletSlice';
 import { StorageProvider } from '../context/StorageContext';
 import { Account } from '../../types/account';
 import { Derivation } from '../utils/derivation';
-import { updateAccount, reorderAccounts, removeAccount, bulkAddAccounts  } from '../slices/accountSlice';
+import { updateAccount, reorderAccounts, removeAccount, bulkAddAccounts, setSelectedAccount } from '../slices/accountSlice';
+
 
 // Update account
 export const updateAccountAction = (
@@ -14,12 +15,12 @@ export const updateAccountAction = (
     try {
         const storage = StorageProvider.getStorage();
         const account = await storage.loadAccount(id);
-        
+
         if (!account) throw new Error('Account not found');
-        
+
         const updatedAccount = { ...account, ...updates };
         await storage.saveAccount(updatedAccount);
-        
+
         dispatch(updateAccount({ id, updates }));
     } catch (error) {
         dispatch(setError('Failed to update account'));
@@ -165,7 +166,7 @@ export const deleteAccountAction = (
     try {
         const state = getState();
         const account = state.accounts.accounts[accountId];
-        
+
         if (!account) {
             throw new Error('Account not found');
         }
@@ -177,12 +178,18 @@ export const deleteAccountAction = (
         }
 
         const storage = StorageProvider.getStorage();
-        
+
         // Remove from storage
         await storage.deleteAccount(accountId);
-        
+
+        // If deleting selected account, clear selection from storage
+        if (state.accounts.selectedAccount === accountId) {
+            await storage.saveActiveAccount('');
+        }
+
         // Update Redux state
         dispatch(removeAccount(accountId));
+        if (accountId === state.accounts.selectedAccount) dispatch(setSelectedAccount(null));
 
     } catch (error) {
         dispatch(setError('Failed to delete account'));
@@ -197,17 +204,17 @@ export const reorderAccountsAction = (
     try {
         const state = getState();
         const accounts = state.accounts.accounts;
-        
+
         // Validate the new order
         const currentIds = new Set(Object.keys(accounts));
         const newIds = new Set(Object.keys(newOrder));
-        
+
         // Check if all accounts are included
-        if (currentIds.size !== newIds.size || 
+        if (currentIds.size !== newIds.size ||
             ![...currentIds].every(id => newIds.has(id))) {
             throw new Error('New order must include all accounts');
         }
-        
+
         // Check if order numbers are unique and sequential
         const orderValues = Object.values(newOrder);
         const uniqueOrders = new Set(orderValues);
@@ -216,14 +223,14 @@ export const reorderAccountsAction = (
         }
 
         const storage = StorageProvider.getStorage();
-        
+
         // Update storage
         await Promise.all(
-            Object.entries(newOrder).map(([id, order]) => 
+            Object.entries(newOrder).map(([id, order]) =>
                 storage.saveAccount({ ...accounts[id], order })
             )
         );
-        
+
         // Update Redux state
         dispatch(reorderAccounts(newOrder));
 

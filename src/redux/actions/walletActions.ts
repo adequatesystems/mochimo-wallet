@@ -213,11 +213,12 @@ export const lockWalletAction = (): AppThunk => async (dispatch) => {
 
 export const setSelectedAccountAction = (
     accountId: string | null
-): AppThunk<void> => async (dispatch) => {
+): AppThunk<void> => async (dispatch, getState) => {
     try {
         const storage = StorageProvider.getStorage();
-
-        if (accountId) {
+        const state = getState();
+        const accounts = state.accounts.accounts;
+        if (accountId && accounts[accountId]) {
             // Update Redux state
             dispatch(setSelectedAccount(accountId));
             // Save to storage
