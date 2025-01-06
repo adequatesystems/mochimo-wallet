@@ -10,7 +10,12 @@ export const store = configureStore({
         network: networkReducer,
         transaction: transactionReducer,
         accounts: accountReducer
-    }
+    },
+    middleware: (getDefaultMiddleware) =>
+        getDefaultMiddleware({
+            serializableCheck: false,
+            thunk: true
+        })
 });
 export type AppStore = typeof store;
 export type RootState = ReturnType<typeof store.getState>;
