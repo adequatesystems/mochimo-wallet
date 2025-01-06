@@ -333,7 +333,7 @@ describe('Wallet Integration', () => {
             ).rejects.toThrow('No accounts matched the filter criteria');
         });
 
-        it.only('should import accounts from MCM file into existing wallet', async () => {
+        it('should import accounts from MCM file into existing wallet', async () => {
             // 1. First create a wallet with some accounts
             await store.dispatch(createWalletAction({ password: testPassword }));
             await store.dispatch(createAccountAction('Original Account 1'));
@@ -370,7 +370,7 @@ describe('Wallet Integration', () => {
             // Verify imported accounts
             expect(accounts.find(a => a.name === 'acc1')).toBeDefined();
             expect(accounts.find(a => a.name === 'acc2')).toBeDefined();
-            
+
             expect(accounts.find(a => a.name === 'acc1')?.wotsIndex).toBe(-1);
             expect(accounts.find(a => a.name === 'acc2')?.wotsIndex).toBe(-1);
             // 4. Verify account orders are sequential

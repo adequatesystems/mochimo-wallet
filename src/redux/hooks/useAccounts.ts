@@ -1,32 +1,34 @@
-import { useCallback } from 'react';
-import { useAppDispatch, useAppSelector } from './useStore';
-import { selectAccounts, selectSelectedAccount } from '../selectors/accountSelectors';
-import {  updateAccountAction, deleteAccountAction } from '../actions/accountActions';
-import { Account } from '@/types/account';
+import { useCallback, useMemo } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '../store';
+import { renameAccountAction, reorderAccountsAction } from '../actions/accountActions';
 import { createAccountAction } from '../actions/walletActions';
 
 export const useAccounts = () => {
-    const dispatch = useAppDispatch();
-    const accounts = useAppSelector(selectAccounts);
-    const selectedAccount = useAppSelector(selectSelectedAccount);
+    const dispatch = useDispatch<AppDispatch>();
+    
+    const accounts = useSelector((state: RootState) => state.accounts.accounts);
+    
+    const sortedAccounts = useMemo(() => {
+        return Object.values(accounts).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    }, [accounts]);
 
-    const createAccount = useCallback(async (name?: string) => {
-        return dispatch(createAccountAction(name));
+    const createAccount = useCallback(async (name: string) => {
+        return await dispatch(createAccountAction(name));
     }, [dispatch]);
 
-    const updateAccount = useCallback(async (id: string, updates: Partial<Account>) => {
-        return dispatch(updateAccountAction(id, updates));
+    const renameAccount = useCallback(async (id: string, name: string) => {
+        return await dispatch(renameAccountAction(id, name));
     }, [dispatch]);
 
-    const deleteAccount = useCallback(async (id: string) => {
-        return dispatch(deleteAccountAction(id));
+    const reorderAccounts = useCallback(async (newOrder: Record<string, number>) => {
+        return await dispatch(reorderAccountsAction(newOrder));
     }, [dispatch]);
 
     return {
-        accounts,
-        selectedAccount,
+        accounts: sortedAccounts,
         createAccount,
-        updateAccount,
-        deleteAccount
+        renameAccount,
+        reorderAccounts
     };
 }; 

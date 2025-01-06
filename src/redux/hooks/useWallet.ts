@@ -10,7 +10,7 @@ export const useWallet = () => {
     const network = useAppSelector(selectNetwork);
 
     const createWallet = useCallback(async (password: string, mnemonic?: string) => {
-        return dispatch(createWalletAction(password, mnemonic));
+        return dispatch(createWalletAction({ password, mnemonic }));
     }, [dispatch]);
 
     const unlockWallet = useCallback(async (password: string) => {

@@ -1,83 +1,137 @@
 import { renderHook, act } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { useAccounts } from '../../../../src/redux/hooks/useAccounts';
-import { useWallet } from '../../../../src/redux/hooks/useWallet';
 import walletReducer from '../../../../src/redux/slices/walletSlice';
 import accountReducer from '../../../../src/redux/slices/accountSlice';
-import type { PropsWithChildren } from 'react';
+import networkReducer from '../../../../src/redux/slices/networkSlice';
+import transactionReducer from '../../../../src/redux/slices/transactionSlice';
+import { StorageProvider } from '../../../../src/redux/context/StorageContext';
+import { NetworkProvider } from '../../../../src/redux/context/NetworkContext';
+import { MockStorage } from '../../../mocks/MockStorage';
+import { createWalletAction } from '../../../../src/redux/actions/walletActions';
+import { createAccountAction } from '../../../../src/redux/actions/walletActions';
+import { renameAccountAction, reorderAccountsAction } from '../../../../src/redux/actions/accountActions';
 import React from 'react';
 
 describe('useAccounts', () => {
-    let store: ReturnType<typeof configureStore>;
-    
+    const mockStorage = new MockStorage();
+    const testPassword = 'test-password';
+
+    const mockNetworkService = {
+        activateTag: vi.fn().mockResolvedValue({ status: 'success' }),
+        resolveTag: vi.fn().mockImplementation(async () => ({
+            addressConsensus: '0'.repeat(64),
+            balanceConsensus: '1000000',
+            status: 'success'
+        })),
+        pushTransaction: vi.fn(),
+        getNetworkStatus: vi.fn().mockReturnValue('connected')
+    };
+
     beforeEach(() => {
-        store = configureStore({
+        StorageProvider.setStorage(mockStorage);
+        NetworkProvider.setNetwork(mockNetworkService);
+        vi.clearAllMocks();
+    });
+
+    const setupStore = async () => {
+        const store = configureStore({
             reducer: {
                 wallet: walletReducer,
-                accounts: accountReducer
+                accounts: accountReducer,
+                network: networkReducer,
+                transaction: transactionReducer
+            },
+            preloadedState: {
+                wallet: {
+                    hasWallet: true,
+                    initialized: true,
+                    locked: false,
+                    error: null,
+                    network: 'mainnet',
+                    highestAccountIndex: -1,
+                    activeAccount: null
+                },
+                accounts: {
+                    accounts: {}
+                }
             }
         });
-    });
 
-    const wrapper = ({ children }: PropsWithChildren) => (
-        <Provider store={store}>{children}</Provider>
-    );
+        // Create wallet first
+        await store.dispatch(createWalletAction({ password: testPassword }));
+
+        return store;
+    };
 
     it('should create and manage accounts', async () => {
-        const { result: walletResult } = renderHook(() => useWallet(), { wrapper });
+        const store = await setupStore();
+
+        const wrapper = ({ children }: { children: React.ReactNode }) => (
+            <Provider store={store}>{children}</Provider>
+        );
+
         const { result } = renderHook(() => useAccounts(), { wrapper });
-
-        // Setup wallet first
-        let mnemonic: string;
-        await act(async () => {
-            mnemonic = await walletResult.current.createWallet('password123');
-        });
-        
-        await act(async () => {
-            await walletResult.current.unlockWallet('password123');
-        });
-
-        expect(walletResult.current.hasWallet).toBe(true);
-        expect(walletResult.current.isLocked).toBe(false);
 
         // Create account
-        let account;
         await act(async () => {
-            account = await result.current.createAccount('Test Account');
+            await result.current.createAccount('Test Account 1');
         });
 
-        expect(Object.keys(result.current.accounts).length).toBe(1);
-        expect(result.current.accounts[account.tag].name).toBe('Test Account');
+        // Verify account was created
+        expect(result.current.accounts).toHaveLength(1);
+        expect(result.current.accounts[0].name).toBe('Test Account 1');
 
-        // Update account
+        // Rename account
+        const accountId = result.current.accounts[0].tag;
         await act(async () => {
-            await result.current.updateAccount(account.tag, { name: 'Updated Name' });
+            await result.current.renameAccount(accountId, 'Renamed Account');
         });
 
-        expect(result.current.accounts[account.tag].name).toBe('Updated Name');
+        // Verify rename
+        expect(result.current.accounts[0].name).toBe('Renamed Account');
 
-        // Create second account and delete first
-        let account2;
+        // Create another account and test reordering
         await act(async () => {
-            account2 = await result.current.createAccount('Second Account');
+            await result.current.createAccount('Test Account 2');
         });
 
+        const accounts = result.current.accounts;
         await act(async () => {
-            await result.current.deleteAccount(account.tag);
+            await result.current.reorderAccounts({
+                [accounts[0].tag]: 1,
+                [accounts[1].tag]: 0
+            });
         });
 
-        expect(Object.keys(result.current.accounts).length).toBe(1);
-        expect(result.current.accounts[account.tag]).toBeUndefined();
-        expect(result.current.accounts[account2.tag]).toBeDefined();
+        // Verify reordering
+        expect(result.current.accounts[0].name).toBe('Test Account 2');
+        expect(result.current.accounts[1].name).toBe('Renamed Account');
     });
 
-    it('should handle errors', async () => {
+    it('should handle errors gracefully', async () => {
+        const store = await setupStore();
+
+        const wrapper = ({ children }: { children: React.ReactNode }) => (
+            <Provider store={store}>{children}</Provider>
+        );
+
         const { result } = renderHook(() => useAccounts(), { wrapper });
-        
+
+        // Test error on non-existent account
         await act(async () => {
             await expect(
-                result.current.deleteAccount('non-existent')
+                result.current.renameAccount('nonexistent', 'New Name')
+            ).rejects.toThrow();
+        });
+
+        // Test error on invalid reorder
+        await act(async () => {
+            await result.current.createAccount('Test Account');
+            await expect(
+                result.current.reorderAccounts({ 'nonexistent': 0 })
             ).rejects.toThrow();
         });
     });

@@ -1,9 +1,10 @@
 import { AppThunk } from '../store';
-import { addAccount, bulkAddAccounts, updateAccount, removeAccount, reorderAccounts } from '../slices/accountSlice';
+
 import { setError } from '../slices/walletSlice';
 import { StorageProvider } from '../context/StorageContext';
 import { Account } from '../../types/account';
 import { Derivation } from '../utils/derivation';
+import { updateAccount, reorderAccounts, removeAccount, bulkAddAccounts  } from '../slices/accountSlice';
 
 // Update account
 export const updateAccountAction = (
@@ -101,7 +102,7 @@ export const importMCMAccountAction = (
         };
 
         await storage.saveAccount(account);
-        dispatch(addAccount({ id: tag, account }));
+        dispatch(bulkAddAccounts({ [tag]: account }));
         return account;
     } catch (error) {
         dispatch(setError('Failed to import account'));
