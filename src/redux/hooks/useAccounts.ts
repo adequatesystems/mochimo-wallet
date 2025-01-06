@@ -4,12 +4,16 @@ import { AppDispatch, RootState } from '../store';
 import { renameAccountAction, reorderAccountsAction, deleteAccountAction, updateAccountAction } from '../actions/accountActions';
 import { createAccountAction, setSelectedAccountAction } from '../actions/walletActions';
 import { Account } from '@/types/account';
+import { selectCurrentWOTSKeyPair } from '../selectors/accountSelectors';
+import { selectNextWOTSKeyPair } from '../selectors/accountSelectors';
 
 export const useAccounts = () => {
     const dispatch = useDispatch<AppDispatch>();
 
     const accounts = useSelector((state: RootState) => state.accounts.accounts);
     const selectedAccount = useSelector((state: RootState) => state.accounts.selectedAccount);
+    const currentWOTSKeyPair = useSelector(selectCurrentWOTSKeyPair);
+    const nextWOTSKeyPair = useSelector(selectNextWOTSKeyPair);
 
     const sortedAccounts = useMemo(() => {
         return Object.values(accounts).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
@@ -37,6 +41,7 @@ export const useAccounts = () => {
     const updateAccount = useCallback(async (id: string, account: Partial<Account>) => {
         return await dispatch(updateAccountAction(id, account));
     }, [dispatch]);
+
     return {
         accounts: sortedAccounts,
         selectedAccount,
@@ -45,6 +50,8 @@ export const useAccounts = () => {
         deleteAccount,
         reorderAccounts,
         setSelectedAccount,
-        updateAccount
+        updateAccount,
+        currentWOTSKeyPair,
+        nextWOTSKeyPair
     };
 }; 
