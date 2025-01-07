@@ -10,23 +10,20 @@ export const activateTagAction = createAsyncThunk(
     'network/activateTag',
     async (_, { getState, dispatch }) => {
         const state = getState() as RootState;
-        const {  activeAccount } = state.wallet;
-        const networkService = NetworkProvider.getNetwork();
-        if (!activeAccount) {
-            throw new Error('No active account');
+        const selectedAccount = selectSelectedAccount(state);
+        if (!selectedAccount) {
+            throw new Error('No account selected');
         }
+        const networkService = NetworkProvider.getNetwork();
   
         dispatch(setLoading(true));
         dispatch(setError(null));
 
         try {
-            const selectedAccount = selectSelectedAccount(state);
-            if(!selectedAccount) {
-                throw new Error('No selected account');
-            }
-            
+
+
             if (!selectedAccount.faddress) throw new Error('Wots address not found');
-            
+
             await networkService.activateTag(selectedAccount.faddress);
         } catch (error) {
             dispatch(setError(error as Error));

@@ -8,7 +8,6 @@ export interface WalletState {
     network: NetworkType;
     error: string | null;
     highestAccountIndex: number;
-    activeAccount: string | null;
 }
 
 export interface AccountState {

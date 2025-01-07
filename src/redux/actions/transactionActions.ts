@@ -22,7 +22,7 @@ export const sendTransactionAction = createAsyncThunk(
         const selectedAccount = selectSelectedAccount(state);
         const masterSeed = SessionManager.getInstance().getMasterSeed();
         if (!selectedAccount) {
-            throw new Error('No active account');
+            throw new Error('No account selected');
         }
 
         dispatch(setLoading(true));
