@@ -16,6 +16,7 @@ import { AppThunk } from '../store';
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { RootState } from '../store';
 import { DecodeResult } from '@/crypto/mcmDecoder';
+import { ImportAccountsOptions, ImportOptions } from '../types/state';
 
 
 
@@ -232,11 +233,7 @@ export const setSelectedAccountAction = (
     }
 };
 
-interface ImportOptions {
-    mcmData: DecodeResult;
-    password: string;
-    accountFilter?: (index: number, seed: Uint8Array, name: string) => boolean;
-}
+
 
 export const importFromMcmFileAction = createAsyncThunk(
     'wallet/importFromMcm',
@@ -287,11 +284,7 @@ export const importFromMcmFileAction = createAsyncThunk(
     }
 );
 
-interface ImportAccountsOptions {
-    mcmData: DecodeResult;
-    accountFilter?: (index: number, seed: Uint8Array, name: string) => boolean;
-    source: 'mnemonic' | 'mcm';
-}
+
 
 
 

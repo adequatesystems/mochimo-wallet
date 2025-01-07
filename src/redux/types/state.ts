@@ -1,3 +1,4 @@
+import { DecodeResult } from '@/crypto';
 import { NetworkType } from '../../types/account';
 import { Account } from '../../types/account';
 
@@ -31,6 +32,16 @@ export interface TransactionState {
     isLoading: boolean;
     error: string | null;
     pendingTransactions: string[]; // Array of transaction hashes
+}
+export interface ImportAccountsOptions {
+    mcmData: DecodeResult;
+    accountFilter?: (index: number, seed: Uint8Array, name: string) => boolean;
+    source: 'mnemonic' | 'mcm';
+}
+export interface ImportOptions {
+    mcmData: DecodeResult;
+    password: string;
+    accountFilter?: (index: number, seed: Uint8Array, name: string) => boolean;
 }
 
 // Add type guard to ensure imported accounts have seeds
