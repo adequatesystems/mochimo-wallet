@@ -25,7 +25,3 @@ export const selectNetwork = createSelector(
     (wallet) => wallet.network
 );
 
-export const selectActiveAccount = createSelector(
-    selectWallet,
-    (wallet) => wallet.activeAccount
-); 
