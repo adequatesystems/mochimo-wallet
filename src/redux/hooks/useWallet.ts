@@ -4,6 +4,7 @@ import { createWalletAction, unlockWalletAction, lockWalletAction, importFromMcm
 import { selectWalletStatus, selectWalletError, selectNetwork } from '../selectors/walletSelectors';
 import { StorageProvider } from '../context/StorageContext';
 import { DecodeResult } from '@/crypto';
+import { setHasWallet } from '../slices/walletSlice';
 
 export const useWallet = () => {
     const dispatch = useAppDispatch();
@@ -39,6 +40,10 @@ export const useWallet = () => {
         return dispatch(importAccountsFromMcmAction({ mcmData, accountFilter, source: 'mcm' }));
     }, [dispatch]);
     
+    const setHasWalletStatus = useCallback((hasWallet: boolean) => {
+        dispatch(setHasWallet(hasWallet));
+    }, [dispatch]);
+    
     return {
         isLocked,
         hasWallet,
@@ -50,6 +55,7 @@ export const useWallet = () => {
         lockWallet,
         checkWallet,
         importFromMcmFile,
-        importAccountsFromMcm
+        importAccountsFromMcm,
+        setHasWalletStatus
     };
 }; 

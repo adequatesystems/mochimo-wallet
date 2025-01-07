@@ -78,6 +78,7 @@ export const unlockWalletAction = (password: string): AppThunk => async (dispatc
         dispatch(setHighestIndex(highestIndex));
         dispatch(setSelectedAccount(activeAccount));
         dispatch(setLocked(false));
+        dispatch(setHasWallet(true));
     } catch (error) {
         dispatch(setError('Invalid password'));
         throw error;
