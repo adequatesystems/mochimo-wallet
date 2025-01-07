@@ -105,10 +105,10 @@ export class ExtensionStorage implements Storage {
 
 function getStorageArea(): StorageArea {
     if (typeof browser !== 'undefined' && browser.storage) {
-        return browser.storage.sync || browser.storage.local;
+        return browser.storage.local;
     }
     if (typeof chrome !== 'undefined' && chrome.storage) {
-        return chrome.storage.sync || chrome.storage.local;
+        return chrome.storage.local;
     }
     throw new Error('No extension storage API available');
 }
