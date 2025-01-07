@@ -45,6 +45,7 @@ export const createWalletAction = createAsyncThunk(
 
             return { mnemonic: generatedMnemonic };
         } catch (error) {
+            console.error('Failed to create wallet:', error);
             dispatch(setError('Failed to create wallet'));
             return rejectWithValue('Failed to create wallet');
         }
