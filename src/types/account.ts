@@ -13,4 +13,5 @@ export interface Account {
     wotsIndex: number; //starts from -1
     seed: string;
     faddress: string;// first address generated for this account
+    avatar?: string;
 } 
