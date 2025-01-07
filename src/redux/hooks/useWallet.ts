@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from './useStore';
 import { createWalletAction, unlockWalletAction, lockWalletAction } from '../actions/walletActions';
 import { selectWalletStatus, selectWalletError, selectNetwork } from '../selectors/walletSelectors';
+import { StorageProvider } from '../context/StorageContext';
 
 export const useWallet = () => {
     const dispatch = useAppDispatch();
@@ -24,6 +25,11 @@ export const useWallet = () => {
         dispatch(lockWalletAction());
     }, [dispatch, hasWallet]);
 
+    const checkWallet = useCallback(async () => {
+        const masterSeed = await StorageProvider.getStorage().loadMasterSeed();
+        return Boolean(masterSeed);
+    }, [dispatch]);
+
     return {
         isLocked,
         hasWallet,
@@ -32,6 +38,7 @@ export const useWallet = () => {
         network,
         createWallet,
         unlockWallet,
-        lockWallet
+        lockWallet,
+        checkWallet
     };
 }; 
