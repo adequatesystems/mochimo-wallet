@@ -90,13 +90,13 @@ describe('useNetwork', () => {
 
     it('should handle activation errors', async () => {
         // Remove active account to trigger error
-        store.dispatch({ type: 'wallet/setActiveAccount', payload: null });
+        store.dispatch({ type: 'accounts/setSelectedAccount', payload: null });
 
         const { result } = renderHook(() => useNetwork(), { wrapper });
 
         await act(async () => {
             await expect(result.current.activateTag())
-                .rejects.toThrow('No active account');
+                .rejects.toThrow('No account selected');
         });
 
         expect(result.current.error).toBeDefined();

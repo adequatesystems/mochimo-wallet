@@ -37,9 +37,6 @@ const walletSlice = createSlice({
         },
         setHighestIndex: (state, action: PayloadAction<number>) => {
             state.highestAccountIndex = action.payload;
-        },
-        setActiveAccount: (state, action: PayloadAction<string | null>) => {
-            state.activeAccount = action.payload;
         }
     }
 });
