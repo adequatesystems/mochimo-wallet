@@ -1,8 +1,9 @@
 import { useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from './useStore';
-import { createWalletAction, unlockWalletAction, lockWalletAction } from '../actions/walletActions';
+import { createWalletAction, unlockWalletAction, lockWalletAction, importFromMcmFileAction, importAccountsFromMcmAction } from '../actions/walletActions';
 import { selectWalletStatus, selectWalletError, selectNetwork } from '../selectors/walletSelectors';
 import { StorageProvider } from '../context/StorageContext';
+import { DecodeResult } from '@/crypto';
 
 export const useWallet = () => {
     const dispatch = useAppDispatch();
@@ -30,6 +31,14 @@ export const useWallet = () => {
         return Boolean(masterSeed);
     }, [dispatch]);
 
+    const importFromMcmFile = useCallback(async (mcmData: DecodeResult, password: string, accountFilter?: (index: number, seed: Uint8Array, name: string) => boolean) => {
+        return dispatch(importFromMcmFileAction({ mcmData, password, accountFilter }));
+    }, [dispatch]);
+
+    const importAccountsFromMcm = useCallback(async (mcmData: DecodeResult, accountFilter?: (index: number, seed: Uint8Array, name: string) => boolean) => {
+        return dispatch(importAccountsFromMcmAction({ mcmData, accountFilter, source: 'mcm' }));
+    }, [dispatch]);
+    
     return {
         isLocked,
         hasWallet,
@@ -39,6 +48,8 @@ export const useWallet = () => {
         createWallet,
         unlockWallet,
         lockWallet,
-        checkWallet
+        checkWallet,
+        importFromMcmFile,
+        importAccountsFromMcm
     };
 }; 
