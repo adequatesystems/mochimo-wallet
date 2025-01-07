@@ -20,8 +20,9 @@ export const sendTransactionAction = createAsyncThunk(
     async (params: SendTransactionParams, { getState, dispatch }) => {
         const state = getState() as RootState;
         const selectedAccount = selectSelectedAccount(state);
-        const masterSeed = SessionManager.getInstance().getMasterSeed();
-        if (!selectedAccount) {
+        const senderKeyPair = selectCurrentWOTSKeyPair(state);
+        const changeKeyPair = selectNextWOTSKeyPair(state);
+        if (!selectedAccount || !senderKeyPair || !changeKeyPair) {
             throw new Error('No account selected');
         }
 
@@ -34,8 +35,8 @@ export const sendTransactionAction = createAsyncThunk(
         const destAddress = (destTagResolve.addressConsensus)
 
         try {
-            const { to, amount, tag } = params;
-            const tx = await createTransaction(state, masterSeed, selectedAccount, Buffer.from(destAddress, 'hex'), amount, balance);
+            const { amount } = params;
+            const tx = createTransaction(senderKeyPair, changeKeyPair, Buffer.from(destAddress, 'hex'), amount, balance);
             // Send transaction
             const txHash = await NetworkProvider.getNetwork().pushTransaction(Buffer.from(tx.datagram).toString('base64'));
             if (txHash.status === 'success' && txHash.data?.txid) {
@@ -60,35 +61,24 @@ export interface TransactionOptions {
 }
 
  function createTransaction(
-    state: RootState,
-    masterSeed: MasterSeed,
-    account: Account,
+    senderKeyPair: { secret: string, address: string },
+    changeKeyPair: { secret: string, address: string },
     destination: Uint8Array,
     amount: bigint,
     balance: bigint = BigInt(0),
     options: TransactionOptions = {}
-): { tx: Uint8Array, datagram: Uint8Array, nextWotsIndex: number } {
-    if (!masterSeed) {
-        throw new Error('Wallet is locked');
-    }
-    const currPair = selectCurrentWOTSKeyPair(state);
-    const nextPair = selectNextWOTSKeyPair(state);
-    // Create WOTS wallet for signing
-    if (!currPair || !nextPair) {
+): { tx: Uint8Array, datagram: Uint8Array } {
+    if (!senderKeyPair || !destination || !changeKeyPair) {
         throw new Error('No current or next WOTS key pair');
     }
-    const sourceAddress = currPair.address;
-    const tag = account.tag;
-
-    const seed = account.seed ? Buffer.from(account.seed, 'hex') : masterSeed.deriveAccountSeed(account.index!)
-    const sourceSecret = Derivation.deriveWotsSeedAndAddress(seed, account.wotsIndex, tag)
+    const sourceAddress = Buffer.from(senderKeyPair.address, 'hex');
+    const sourceSecret = Buffer.from(senderKeyPair.secret, 'hex');
 
     // Default fee if not specified
     const fee = options.fee || BigInt(500);  // Example default fee
 
     // Create change address from next WOTS index
-    const changeWallet = Derivation.deriveWotsSeedAndAddress(seed, account.wotsIndex + 1, tag)
-    const changeAddress = changeWallet.address;
+    const changeAddress = changeKeyPair.address;
     const changeAmount = balance - amount - fee;
     // Sign the transaction
     const { tx, datagram } = Transaction.sign(
@@ -96,11 +86,11 @@ export interface TransactionOptions {
         amount,        // Payment amount
         fee,          // Network fee
         changeAmount, // Change amount
-        Buffer.from(sourceAddress, 'hex'),
-        sourceSecret.secret,
+        sourceAddress,
+        sourceSecret,
         destination,
-        changeAddress!
+        Buffer.from(changeAddress, 'hex')
     );
 
-    return { tx, datagram: datagram, nextWotsIndex: account.wotsIndex + 1 };
+    return { tx, datagram: datagram };
 }
