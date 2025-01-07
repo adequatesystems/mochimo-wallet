@@ -1,10 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect  } from 'react';
 import { MochimoWalletProvider, useWallet, useAccounts } from 'mochimo-wallet';
 
 const WalletComponent = () => {
-  const { createWallet, unlockWallet, lockWallet, isLocked, hasWallet, error } = useWallet();
+  const { createWallet, unlockWallet, lockWallet, isLocked, error, checkWallet } = useWallet();
   const { accounts, createAccount, selectedAccount, currentWOTSKeyPair } = useAccounts();
   const [password, setPassword] = useState('');
+  const [hasWallet, setHasWallet] = useState(false);
+
+  useEffect(() => {
+    const check = async () => {
+      const hasWallet = await checkWallet();
+      setHasWallet(hasWallet);
+    };
+    check();
+  }, [checkWallet]);
 
   const handleCreateWallet = async () => {
     try {
