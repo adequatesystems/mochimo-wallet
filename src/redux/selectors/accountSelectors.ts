@@ -24,12 +24,6 @@ export const selectCurrentWOTSKeyPair = createSelector(
             return { address: account.faddress, secret: account.seed };
         }
 
-        if (isNil(account.index)) {
-            //account is an imported account
-            //check if it has a faddress
-            throw new Error('Imported account has no first address');
-        }
-
         //otherwise derive from seed and tag
 
         const { address, secret } = Derivation.deriveWotsSeedAndAddress(
