@@ -8,4 +8,5 @@ export * from './redux/provider';
 export * from './redux/hooks';
 export * from './redux/store'
 export * from './redux/context';
+export * from './redux/utils';
 export * from './crypto';
