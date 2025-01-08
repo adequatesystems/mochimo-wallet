@@ -1,4 +1,4 @@
-import { DecodeResult } from '@/crypto';
+import { DecodeResult, EncryptedData } from '@/crypto';
 import { NetworkType } from '../../types/account';
 import { Account } from '../../types/account';
 
@@ -43,7 +43,12 @@ export interface ImportOptions {
     password: string;
     accountFilter?: (index: number, seed: Uint8Array, name: string) => boolean;
 }
-
+export interface WalletJSON {
+    version: string;
+    timestamp: number;
+    encrypted: EncryptedData;
+    accounts: Record<string, Account>;
+}
 // Add type guard to ensure imported accounts have seeds
 export function isImportedAccount(account: Account): account is Account & { seed: string } {
     return account.source === 'mcm' && account.seed !== undefined;

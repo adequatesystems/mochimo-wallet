@@ -1,10 +1,11 @@
 import { useCallback } from 'react';
 import { useAppDispatch, useAppSelector } from './useStore';
-import { createWalletAction, unlockWalletAction, lockWalletAction, importFromMcmFileAction, importAccountsFromMcmAction } from '../actions/walletActions';
+import { createWalletAction, unlockWalletAction, lockWalletAction, importFromMcmFileAction, importAccountsFromMcmAction, exportWalletJSONAction, loadWalletJSONAction } from '../actions/walletActions';
 import { selectWalletStatus, selectWalletError, selectNetwork } from '../selectors/walletSelectors';
 import { StorageProvider } from '../context/StorageContext';
 import { DecodeResult } from '@/crypto';
 import { setHasWallet } from '../slices/walletSlice';
+import { WalletJSON } from '../types/state';
 
 export const useWallet = () => {
     const dispatch = useAppDispatch();
@@ -43,7 +44,12 @@ export const useWallet = () => {
     const setHasWalletStatus = useCallback((hasWallet: boolean) => {
         dispatch(setHasWallet(hasWallet));
     }, [dispatch]);
-    
+    const exportWalletJSON = useCallback(async (password: string) => {
+        return dispatch(exportWalletJSONAction(password));
+    }, [dispatch]);
+    const importWalletJSON = useCallback(async (walletJSON: WalletJSON, password: string) => {
+        return dispatch(loadWalletJSONAction(walletJSON, password));
+    }, [dispatch]);     
     return {
         isLocked,
         hasWallet,
@@ -56,6 +62,8 @@ export const useWallet = () => {
         checkWallet,
         importFromMcmFile,
         importAccountsFromMcm,
-        setHasWalletStatus
+        setHasWalletStatus,
+        importWalletJSON,
+        exportWalletJSON
     };
 }; 

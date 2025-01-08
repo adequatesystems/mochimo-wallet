@@ -16,7 +16,7 @@ import { AppThunk } from '../store';
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { RootState } from '../store';
 import { DecodeResult } from '@/crypto/mcmDecoder';
-import { ImportAccountsOptions, ImportOptions } from '../types/state';
+import { ImportAccountsOptions, ImportOptions, WalletJSON } from '../types/state';
 
 
 
@@ -152,12 +152,7 @@ export const exportWalletJSONAction = (password: string): AppThunk<WalletJSON> =
     }
 };
 
-interface WalletJSON {
-    version: string;
-    timestamp: number;
-    encrypted: EncryptedData;
-    accounts: Record<string, Account>;
-}
+
 
 export const loadWalletJSONAction = (
     walletJSON: WalletJSON,
