@@ -1,5 +1,5 @@
 import { DigestRandomGenerator, intToBytes, wordArrayToBytes } from '../../crypto/digestRandomGenerator';
-import { WOTS } from "mochimo-wots-v2";
+import { WOTS, WotsAddress } from "mochimo-wots-v2";
 import CryptoJS from 'crypto-js';
 
 export class Derivation {
@@ -15,21 +15,11 @@ export class Derivation {
                 bytes.set(randomBytes);
             }
         });
-
-        // Hash the public key with SHA3-512
-        const sha3Hash = CryptoJS.SHA3(
-            CryptoJS.lib.WordArray.create(addr),
-            { outputLength: 512 }
-        );
-
-        // Hash the SHA3 result with RIPEMD160
-        const ripemd = CryptoJS.RIPEMD160(sha3Hash);
-
-        // Convert to bytes and take first 12
-        const hashBytes = wordArrayToBytes(ripemd);
-        const tag = hashBytes.slice(0, 12);
-
-        return tag;
+        const waddr = (WotsAddress.addrFromWots(addr)!);
+        if (!waddr) {
+            throw new Error('Failed to generate WOTS address for tag');
+        }
+        return waddr;
     }
 
     static deriveSeed(

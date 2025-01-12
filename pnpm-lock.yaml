@@ -18,8 +18,8 @@ importers:
         specifier: ^4.2.0
         version: 4.2.0
       mochimo-wots-v2:
-        specifier: ^0.1.2
-        version: 0.1.2
+        specifier: ^1.0.3
+        version: 1.0.3
       node-forge:
         specifier: ^1.3.1
         version: 1.3.1
@@ -1341,6 +1341,9 @@ packages:
 
   mochimo-wots-v2@0.1.2:
     resolution: {integrity: sha512-HbRVJDfI+xgHcvNxXwnq3CYVsKXo7TyXrHcezKRdlY8zBOITTWlC9gx2c+SOJO0xk+H/q3wIMtIiycP3j/6YDw==}
+
+  mochimo-wots-v2@1.0.3:
+    resolution: {integrity: sha512-Gud+5i6+ZH+eTBPP2MM1Ats770dUQJkiUoiK3UxsckBmTmQZG85L6hGnu43YaETgSZ9PYhoNRkCS1C6glhdCOw==}
 
   ms@2.1.3:
     resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
@@ -3216,6 +3219,10 @@ snapshots:
       - redux
 
   mochimo-wots-v2@0.1.2:
+    dependencies:
+      crypto-js: 4.2.0
+
+  mochimo-wots-v2@1.0.3:
     dependencies:
       crypto-js: 4.2.0
 
