@@ -15,7 +15,7 @@ export class Derivation {
                 bytes.set(randomBytes);
             }
         });
-        const waddr = (WotsAddress.addrFromWots(addr)!);
+        const waddr = (WotsAddress.addrFromWots(addr.slice(0, 2144))!);
         if (!waddr) {
             throw new Error('Failed to generate WOTS address for tag');
         }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect  } from 'react';
-import { MochimoWalletProvider, useWallet, useAccounts } from 'mochimo-wallet';
+import { MochimoWalletProvider, useWallet, useAccounts } from '../../../src';
 
 const WalletComponent = () => {
   const { createWallet, unlockWallet, lockWallet, isLocked, error, checkWallet } = useWallet();
