@@ -4,6 +4,7 @@ export * from './types';
 // Export core implementations
 export { MasterSeed } from './core/MasterSeed';
 export * from './network/proxyNetworkService';
+export * from './network/MeshNetworkService';
 export * from './redux/provider';
 export * from './redux/hooks';
 export * from './redux/store'
