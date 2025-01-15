@@ -17,9 +17,12 @@ importers:
       crypto-js:
         specifier: ^4.2.0
         version: 4.2.0
-      mochimo-wots-v2:
-        specifier: ^1.0.4
-        version: 1.0.4
+      mochimo-mesh-api-client:
+        specifier: ^1.0.2
+        version: 1.0.2(crypto-js@4.2.0)(mochimo-wots@1.2.4)
+      mochimo-wots:
+        specifier: ^1.1.1
+        version: 1.2.4
       node-forge:
         specifier: ^1.3.1
         version: 1.3.1
@@ -417,6 +420,10 @@ packages:
 
   '@noble/hashes@1.6.1':
     resolution: {integrity: sha512-pq5D8h10hHBjyqX+cfBm0i8JUXJ0UhczFc4r74zbuT9XgewFo2E3J1cOaGtdZynILNmQ685YWGzGE1Zv6io50w==}
+    engines: {node: ^14.21.3 || >=16}
+
+  '@noble/hashes@1.7.0':
+    resolution: {integrity: sha512-HXydb0DgzTpDPwbVeDGCG1gIu7X6+AuU6Zl6av/E/KG8LMsvPntvq+w17CHRpKBmN6Ybdrt1eP3k4cj8DJa78w==}
     engines: {node: ^14.21.3 || >=16}
 
   '@nodelib/fs.scandir@2.1.5':
@@ -1330,8 +1337,14 @@ packages:
   mlly@1.7.3:
     resolution: {integrity: sha512-xUsx5n/mN0uQf4V548PKQ+YShA4/IW0KI1dZhrNrPCLG+xizETbHTkOa1f8/xut9JRPp8kQuMnz0oqwkTiLo/A==}
 
-  mochimo-wots-v2@1.0.4:
-    resolution: {integrity: sha512-rTZJnt2niLehTnZPXk+GgYsVtmBzQfbJzueNIUPyCTNpy6AZVCO2ulV5OJS3BzTfwQE8p3uDUrMvptxboqL5HQ==}
+  mochimo-mesh-api-client@1.0.2:
+    resolution: {integrity: sha512-q8ygW/E7rlqr16DsRiUvb0kWL5Z34XdbW3yPobKFs81PqQ3oG4p98vHunZ1tqD5FVyMGhSUVr+IgkK/giLqYSA==}
+    peerDependencies:
+      crypto-js: ^4.2.0
+      mochimo-wots: ^1.2.1
+
+  mochimo-wots@1.2.4:
+    resolution: {integrity: sha512-iwZ2sNz1miSBO2ak77UZKS/GN0ctWIXYgCTvvhShTx3+cy0+Ig/WGF7q5A6BcEN4gDU7iyM7atUauFe14Xlpng==}
 
   ms@2.1.3:
     resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
@@ -2207,6 +2220,8 @@ snapshots:
   '@microsoft/tsdoc@0.14.2': {}
 
   '@noble/hashes@1.6.1': {}
+
+  '@noble/hashes@1.7.0': {}
 
   '@nodelib/fs.scandir@2.1.5':
     dependencies:
@@ -3189,9 +3204,14 @@ snapshots:
       pkg-types: 1.2.1
       ufo: 1.5.4
 
-  mochimo-wots-v2@1.0.4:
+  mochimo-mesh-api-client@1.0.2(crypto-js@4.2.0)(mochimo-wots@1.2.4):
     dependencies:
       crypto-js: 4.2.0
+      mochimo-wots: 1.2.4
+
+  mochimo-wots@1.2.4:
+    dependencies:
+      '@noble/hashes': 1.7.0
 
   ms@2.1.3: {}
 

@@ -1,6 +1,6 @@
 import { NetworkService, TagActivationResponse, TagResolveResponse, TransactionResponse } from "../types/network";
 export class ProxyNetworkService implements NetworkService {
-    protected apiUrl: string;
+    public apiUrl: string;
     getNetworkStatus(): Promise<{ height: number; nodes: any[]; }> {
         throw new Error("Method not implemented.");
     }

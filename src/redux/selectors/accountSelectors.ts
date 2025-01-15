@@ -26,13 +26,13 @@ export const selectCurrentWOTSKeyPair = createSelector(
 
         //otherwise derive from seed and tag
 
-        const { address, secret } = Derivation.deriveWotsSeedAndAddress(
+        const { address, secret, wotsWallet } = Derivation.deriveWotsSeedAndAddress(
             Buffer.from(account.seed, 'hex'),
             account.wotsIndex,
             account.tag
         );
 
-        return { address: Buffer.from(address).toString('hex'), secret: Buffer.from(secret).toString('hex') };
+        return { address: Buffer.from(address).toString('hex'), secret: Buffer.from(secret).toString('hex'), wotsWallet };
 
     }
 );
@@ -48,7 +48,7 @@ export const selectNextWOTSKeyPair = createSelector(
         }
 
 
-        const { address, secret } = Derivation.deriveWotsSeedAndAddress(
+        const { address, secret, wotsWallet } = Derivation.deriveWotsSeedAndAddress(
             Buffer.from(account.seed, 'hex'),
             account.wotsIndex + 1, // Next index
             account.tag
@@ -57,6 +57,7 @@ export const selectNextWOTSKeyPair = createSelector(
         return {
             address: Buffer.from(address).toString('hex'),
             secret: Buffer.from(secret).toString('hex'),
+            wotsWallet
         };
 
     }

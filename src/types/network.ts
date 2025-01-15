@@ -51,6 +51,7 @@ export interface TagActivationResponse {
  * Network service interface
  */
 export interface NetworkService {
+    apiUrl: string;
     /**
      * Resolves a tag to its current WOTS address and balance
      * @param tag The tag to resolve

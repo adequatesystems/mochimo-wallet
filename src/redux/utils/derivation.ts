@@ -1,25 +1,18 @@
 import { DigestRandomGenerator, intToBytes, wordArrayToBytes } from '../../crypto/digestRandomGenerator';
-import { WOTS, WotsAddress } from "mochimo-wots-v2";
+import { WOTS, WotsAddress, WOTSWallet } from "mochimo-wots";
 import CryptoJS from 'crypto-js';
 
 export class Derivation {
     public static deriveAccountTag(masterSeed: Uint8Array, accountIndex: number): Uint8Array {
-
         const { secret, prng } = this.deriveSeed(masterSeed, accountIndex);
-        const accountSeed = secret;
-        //generate first address/public key
-        const addr = WOTS.generateRandomAddress_(new Uint8Array(12).fill(1), accountSeed, (bytes) => {
+        const ww = WOTSWallet.create('', secret, undefined, (bytes)=>{
             if (prng) {
                 const len = bytes.length;
                 const randomBytes = prng.nextBytes(len);
                 bytes.set(randomBytes);
             }
-        });
-        const waddr = (WotsAddress.addrFromWots(addr.slice(0, 2144))!);
-        if (!waddr) {
-            throw new Error('Failed to generate WOTS address for tag');
-        }
-        return waddr;
+        })
+        return ww.getAddrTag()!
     }
 
     static deriveSeed(
@@ -37,21 +30,22 @@ export class Derivation {
         return { secret, prng };
     }
 
-    public static deriveWotsSeedAndAddress(accountSeed: Uint8Array, wotsIndex: number, tag: string): { secret: Uint8Array, address: Uint8Array } {
+    public static deriveWotsSeedAndAddress(accountSeed: Uint8Array, wotsIndex: number, tag: string): { secret: Uint8Array, address: Uint8Array, wotsWallet: WOTSWallet } {
         if (wotsIndex < 0) {
             throw new Error('Invalid wots index');
         }
+        const tagBytes = Buffer.from(tag, 'hex')
+        if(tagBytes.length!==20) throw new Error('Invalid tag');
         const secret = this.deriveSeed(accountSeed, wotsIndex);
-        const tagBytes = Buffer.from(tag, 'hex');
-        console.log('Tag:', tag, 'TagBytes:', tagBytes.length);
-        const address = WOTS.generateRandomAddress_(tagBytes, secret.secret, (bytes) => {
+        const ww = WOTSWallet.create('', secret.secret, tagBytes, (bytes)=>{
             if (secret.prng) {
                 const len = bytes.length;
                 const randomBytes = secret.prng.nextBytes(len);
                 bytes.set(randomBytes);
             }
-        });
-        return { secret: secret.secret, address: address };
+        } )
+
+        return { secret: ww.getSecret()!, address: ww.getAddress()!, wotsWallet: ww };
     }
 
 }

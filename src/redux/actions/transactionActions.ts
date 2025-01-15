@@ -4,10 +4,12 @@ import { setLoading, setError, addPendingTransaction } from '../slices/transacti
 import { selectCurrentWOTSKeyPair, selectNextWOTSKeyPair, selectSelectedAccount } from '../selectors/accountSelectors';
 import { Account } from '@/types/account';
 import { MasterSeed } from '@/core/MasterSeed';
-import { Transaction } from 'mochimo-wots-v2';
+
 import { Derivation } from '../utils/derivation';
 import { SessionManager } from '../context/SessionContext';
 import { NetworkProvider } from '../context/NetworkContext';
+import { TransactionBuilder } from 'mochimo-mesh-api-client';
+import { WOTSWallet } from 'mochimo-wots';
 
 interface SendTransactionParams {
     to: string;
@@ -36,16 +38,15 @@ export const sendTransactionAction = createAsyncThunk(
 
         try {
             const { amount } = params;
-            const tx = createTransaction(senderKeyPair, changeKeyPair, Buffer.from(destAddress, 'hex'), amount, balance);
+            const tx = await createAndSendTransaction(senderKeyPair.wotsWallet!, changeKeyPair.wotsWallet!, Buffer.from(destAddress, 'hex'), amount, balance);
             // Send transaction
-            const txHash = await NetworkProvider.getNetwork().pushTransaction(Buffer.from(tx.datagram).toString('base64'));
-            if (txHash.status === 'success' && txHash.data?.txid) {
-                // Add to pending transactions
-                dispatch(addPendingTransaction(txHash.data?.txid!));
+            if (tx.tx.hash) {
+                dispatch(addPendingTransaction(tx.tx.hash));
+
             } else {
-                throw new Error("Failed to send transaction: " + txHash.error);
+                throw new Error("Failed to send transaction: ");
             }
-            return txHash;
+            return tx.tx.hash;
 
         } catch (error) {
             dispatch(setError(error instanceof Error ? error.message : 'Unknown error'));
@@ -57,40 +58,41 @@ export const sendTransactionAction = createAsyncThunk(
 );
 export interface TransactionOptions {
     fee?: bigint;
-    name?: string;  // Optional name for the WOTS wallet
+    memo?: string;
+
 }
 
- function createTransaction(
-    senderKeyPair: { secret: string, address: string },
-    changeKeyPair: { secret: string, address: string },
-    destination: Uint8Array,
+async function createAndSendTransaction(
+    senderWotsWallet: WOTSWallet,
+    changeWotsWallet: WOTSWallet,
+    destAddrTag: Uint8Array,
     amount: bigint,
     balance: bigint = BigInt(0),
     options: TransactionOptions = {}
-): { tx: Uint8Array, datagram: Uint8Array } {
-    if (!senderKeyPair || !destination || !changeKeyPair) {
+) {
+    if (!senderWotsWallet || !destAddrTag || !changeWotsWallet) {
         throw new Error('No current or next WOTS key pair');
     }
-    const sourceAddress = Buffer.from(senderKeyPair.address, 'hex');
-    const sourceSecret = Buffer.from(senderKeyPair.secret, 'hex');
+
 
     // Default fee if not specified
     const fee = options.fee || BigInt(500);  // Example default fee
+    const builder = new TransactionBuilder(NetworkProvider.getNetwork().apiUrl);
 
     // Create change address from next WOTS index
-    const changeAddress = changeKeyPair.address;
+
     const changeAmount = balance - amount - fee;
-    // Sign the transaction
-    const { tx, datagram } = Transaction.sign(
-        balance,  // Source balance (amount + fee)
-        amount,        // Payment amount
-        fee,          // Network fee
-        changeAmount, // Change amount
-        sourceAddress,
-        sourceSecret,
-        destination,
-        Buffer.from(changeAddress, 'hex')
+
+
+    //build a signed tx
+    const result = await builder.buildAndSignTransaction(
+        senderWotsWallet,
+        changeWotsWallet,
+        "0x" + Buffer.from(destAddrTag).toString('hex'),
+        BigInt(10000),
+        BigInt(500),
+        options.memo
     );
 
-    return { tx, datagram: datagram };
+    return { tx: result.submitResult?.transaction_identifier };
 }
