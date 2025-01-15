@@ -104,7 +104,7 @@ export class MCMDecoder {
         const secret = deriveSecret(deterministicSeed, id);
         const tagBytes = Buffer.from(tag, 'hex');
         console.log('Tag:', tag, 'TagBytes:', tagBytes.length);
-        const address = WOTS.generateRandomAddress_(tagBytes, secret.secret, (bytes) => {
+        const address = WOTS.generateRandomAddress(tagBytes, secret.secret, (bytes) => {
             if (secret.prng) {
                 const len = bytes.length;
                 const randomBytes = secret.prng.nextBytes(len);

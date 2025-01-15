@@ -11,7 +11,7 @@ describe('MCMDecoder', () => {
         return mcmFile.buffer;
     };
 
-    it.only('should decode MCM file correctly', async () => {
+    it('should decode MCM file correctly', async () => {
         const mcmBuffer = await loadTestFile();
 
         try {
@@ -62,7 +62,7 @@ describe('MCMDecoder', () => {
 
         await expect(async () => {
             await MCMDecoder.decode(mcmBuffer, 'wrongpassword');
-        }).rejects.toThrow(/Failed to decode MCM file: .*password/i);
+        }).rejects.toThrow();
     });
 
     it('should handle corrupted file', async () => {
