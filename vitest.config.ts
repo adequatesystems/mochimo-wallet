@@ -15,8 +15,14 @@ export default defineConfig({
         deps: {
             inline: [
                 'mochimo-wots',
+                'mochimo-mesh-api-client',
                 '@scure/bip39'
             ]
+        },
+        server: {
+            deps: {
+                inline: ['mochimo-wots', 'mochimo-mesh-api-client']
+            }
         }
     }
 }); 

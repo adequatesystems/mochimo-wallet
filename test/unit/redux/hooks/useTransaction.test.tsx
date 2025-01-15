@@ -12,34 +12,41 @@ import { MasterSeed } from '../../../../src/core/MasterSeed';
 import type { PropsWithChildren } from 'react';
 import React from 'react';
 import { vi } from 'vitest';
+import { TransactionBuilder } from 'mochimo-mesh-api-client';
 
 // Mock WOTS module
-vi.mock('mochimo-wots', () => ({
-    Transaction: {
-        sign: vi.fn().mockImplementation((
-            balance,
-            amount,
-            fee,
-            changeAmount,
-            sourceAddress,
-            sourceSecret,
-            destinationAddress,
-            changeAddress
-        ) => ({
-            tx: Buffer.from('0'.repeat(256), 'hex'),
-            datagram: Buffer.from('0'.repeat(256), 'hex')
-        }))
-    }
-}));
+vi.mock('mochimo-wots', async () => {
+    return {
+        WOTSWallet: {
+            create: vi.fn().mockReturnValue({
+                getAddress: vi.fn().mockReturnValue('0'.repeat(64)),
+                getSecret: vi.fn().mockReturnValue('1'.repeat(64))
+            })
+        }
+    };
+});
 
 // Mock the derivation module
 vi.mock('../../../../src/redux/utils/derivation', () => ({
     Derivation: {
         deriveWotsSeedAndAddress: vi.fn().mockReturnValue({
             address: '0'.repeat(64),
-            secret: '1'.repeat(64)
+            secret: '1'.repeat(64),
+            wotsWallet: {
+                getAddress: vi.fn().mockReturnValue('0'.repeat(64)),
+                getSecret: vi.fn().mockReturnValue('1'.repeat(64))
+            }
         })
     }
+}));
+const TBMock = vi.mock("mochimo-mesh-api-client", () => ({
+    TransactionBuilder: vi.fn().mockImplementation(() => ({
+        buildAndSignTransaction: vi.fn().mockResolvedValue({
+            submitResult: {
+                transaction_identifier: {hash: 'test-tx'}
+            }
+        })
+    }))
 }));
 
 describe('useTransaction', () => {
@@ -135,13 +142,12 @@ describe('useTransaction', () => {
             );
         });
 
-        expect(mockNetworkService.pushTransaction).toHaveBeenCalled();
         expect(result.current.pendingTransactions).toContain('test-tx');
         expect(result.current.isLoading).toBe(false);
     });
 
     it('should handle transaction errors', async () => {
-        mockNetworkService.pushTransaction.mockRejectedValueOnce(
+      vi.mocked(mockNetworkService.resolveTag).mockRejectedValueOnce(
             new Error('Transaction failed')
         );
 

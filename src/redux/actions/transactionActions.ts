@@ -30,27 +30,37 @@ export const sendTransactionAction = createAsyncThunk(
 
         dispatch(setLoading(true));
         dispatch(setError(null));
-        const tagResolve = await NetworkProvider.getNetwork().resolveTag(selectedAccount.tag)
-        const balance = BigInt(tagResolve.balanceConsensus)
-
-        const destTagResolve = await NetworkProvider.getNetwork().resolveTag(params.to)
-        const destAddress = (destTagResolve.addressConsensus)
 
         try {
-            const { amount } = params;
-            const tx = await createAndSendTransaction(senderKeyPair.wotsWallet!, changeKeyPair.wotsWallet!, Buffer.from(destAddress, 'hex'), amount, balance);
-            // Send transaction
-            if (tx.tx.hash) {
-                dispatch(addPendingTransaction(tx.tx.hash));
+            const tagResolve = await NetworkProvider.getNetwork().resolveTag(selectedAccount.tag)
+            const balance = BigInt(tagResolve.balanceConsensus)
 
+            const destTagResolve = await NetworkProvider.getNetwork().resolveTag(params.to)
+            const destAddress = (destTagResolve.addressConsensus)
+
+            const { amount } = params;
+
+            const tx = await createAndSendTransaction(
+                senderKeyPair.wotsWallet!, 
+                changeKeyPair.wotsWallet!, 
+                Buffer.from(destAddress, 'hex'), 
+                amount, 
+                balance
+            );
+
+            // Send transaction
+            if (tx?.tx?.hash) {
+                dispatch(addPendingTransaction(tx.tx.hash));
+                return tx.tx.hash;
             } else {
-                throw new Error("Failed to send transaction: ");
+                throw new Error('Failed to create transaction');
             }
-            return tx.tx.hash;
 
         } catch (error) {
-            dispatch(setError(error instanceof Error ? error.message : 'Unknown error'));
-            throw error;
+            console.error('Transaction error:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            dispatch(setError(errorMessage));
+            throw new Error(errorMessage);
         } finally {
             dispatch(setLoading(false));
         }

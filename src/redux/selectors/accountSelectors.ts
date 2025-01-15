@@ -1,6 +1,7 @@
 import { createSelector } from '@reduxjs/toolkit';
 import { RootState } from '../store';
 import { Derivation } from '../utils/derivation';
+import { WOTSWallet } from 'mochimo-wots';
 
 const isNil = (value: any) => value === null || value === undefined;
 
@@ -21,7 +22,15 @@ export const selectCurrentWOTSKeyPair = createSelector(
     (account) => {
         if (!account) return null;
         if (account.wotsIndex === -1) {
-            return { address: account.faddress, secret: account.seed };
+            console.log('wots index - 1', account.faddress, account.seed, account.tag)
+            return {
+                address: account.faddress, secret: account.seed, wotsWallet: WOTSWallet.create('test', Buffer.from(account.seed, 'hex'), Buffer.from(account.tag, 'hex'), (bytes) => {
+                    const addrHex = Buffer.from(account.faddress, 'hex').toString('hex')
+                    for (let i = 0; i < addrHex.length; i++) {
+                        bytes[i] = parseInt(addrHex[i], 16)
+                    }
+                })
+            };
         }
 
         //otherwise derive from seed and tag
@@ -31,6 +40,7 @@ export const selectCurrentWOTSKeyPair = createSelector(
             account.wotsIndex,
             account.tag
         );
+        console.log('wots index', account.wotsIndex, account.faddress, account.seed, wotsWallet)
 
         return { address: Buffer.from(address).toString('hex'), secret: Buffer.from(secret).toString('hex'), wotsWallet };
 
