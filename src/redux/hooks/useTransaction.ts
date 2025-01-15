@@ -12,9 +12,9 @@ export const useTransaction = () => {
     const sendTransaction = useCallback(async (
         to: string,
         amount: bigint,
-        tag?: string
+
     ) => {
-        return dispatch(sendTransactionAction({ to, amount, tag })).unwrap();
+        return dispatch(sendTransactionAction({ to, amount })).unwrap();
     }, [dispatch]);
     const removePending = useCallback((txHash: string) => {
         dispatch(removePendingTransaction(txHash));
