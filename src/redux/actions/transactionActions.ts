@@ -14,7 +14,6 @@ import { WOTSWallet } from 'mochimo-wots';
 interface SendTransactionParams {
     to: string;
     amount: bigint;
-    tag?: string;
 }
 
 export const sendTransactionAction = createAsyncThunk(
@@ -35,15 +34,13 @@ export const sendTransactionAction = createAsyncThunk(
             const tagResolve = await NetworkProvider.getNetwork().resolveTag(selectedAccount.tag)
             const balance = BigInt(tagResolve.balanceConsensus)
 
-            const destTagResolve = await NetworkProvider.getNetwork().resolveTag(params.to)
-            const destAddress = (destTagResolve.addressConsensus)
 
             const { amount } = params;
 
             const tx = await createAndSendTransaction(
                 senderKeyPair.wotsWallet!, 
                 changeKeyPair.wotsWallet!, 
-                Buffer.from(destAddress, 'hex'), 
+                Buffer.from(params.to, 'hex'), 
                 amount, 
                 balance
             );
