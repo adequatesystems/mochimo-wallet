@@ -347,3 +347,10 @@
 //         });
 //     });
 // }); 
+
+
+describe('HDWallet', () => {
+    it.only('delete this test', () => {
+        expect(true).toBe(true);
+    });
+});

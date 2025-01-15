@@ -122,7 +122,6 @@ describe('Wallet Integration', () => {
                 error: null,
                 network: 'mainnet',
                 highestAccountIndex: -1,
-                activeAccount: null
             });
         });
 

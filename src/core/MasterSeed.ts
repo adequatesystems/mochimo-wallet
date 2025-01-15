@@ -1,5 +1,5 @@
 import { generateSeed, wipeBytes } from '../crypto/random';
-import { createWOTSWallet } from '../crypto/kdf';
+
 import { WOTS, WOTSWallet } from 'mochimo-wots';
 import { EncryptedData } from '../crypto/encryption';
 
@@ -175,21 +175,6 @@ export class MasterSeed {
         return ret;
     }
 
-
-    /**
-     * Creates a WOTS wallet for the given account and WOTS indices
-     * @throws Error if the master seed is locked
-     */
-    async createWOTSWallet(
-        accountIndex: number,
-        wotsIndex: number,
-        name?: string
-    ): Promise<WOTSWallet> {
-        if (this._isLocked || !this.seed) {
-            throw new Error('Master seed is locked');
-        }
-        return createWOTSWallet(this.seed, accountIndex, wotsIndex, name);
-    }
 
     /**
      * Exports the master seed in encrypted form
