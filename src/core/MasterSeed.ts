@@ -157,17 +157,20 @@ export class MasterSeed {
         return Derivation.deriveAccountTag(this.seed, accountIndex);
     }
 
-    public static deriveWotsIndexFromWotsAddress(accountSeed: Uint8Array, wotsAddress: Uint8Array): number {
+    public static deriveWotsIndexFromWotsAddrHash(accountSeed: Uint8Array, wotsAddrHash: Uint8Array, startIndex: number = 0, endIndex: number = 10000 ): number {
         if (!accountSeed) throw new Error('Account seed is empty');
-        //tag bytes are the last 12 bytes of wotsaddress
-        const tagBytes = wotsAddress.slice(-12);
-        const tag = Buffer.from(tagBytes).toString('hex');
-
         let ret: number = -1
-        for (let i = 0; i < 10000; i++) {
+        for (let i = startIndex; i < endIndex; i++) {
             console.log('Creating WOTS wallet for index', i);
-            const w = Derivation.deriveWotsSeedAndAddress(accountSeed, i, tag);
-            if (Buffer.from(w.address).toString('hex') === Buffer.from(wotsAddress).toString('hex')) {
+            const secret = Derivation.deriveSeed(accountSeed, i);
+            const ww = WOTSWallet.create('', secret.secret, undefined, (bytes)=>{
+                if (secret.prng) {
+                    const len = bytes.length;
+                    const randomBytes = secret.prng.nextBytes(len);
+                    bytes.set(randomBytes);
+                }
+            })
+            if (Buffer.from(ww.getAddrHash()!).toString('hex') === Buffer.from(wotsAddrHash).toString('hex')) {
                 ret = i;
                 break;
             }
