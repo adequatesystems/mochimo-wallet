@@ -13,7 +13,7 @@ export class MeshNetworkService implements NetworkService {
     }
 
     resolveTag(tag: string): Promise<TagResolveResponse> {
-        return this.apiClient.resolveTag(tag).then(res => {
+        return this.apiClient.resolveTag("0x"+tag).then(res => {
             return {
                 success: true,
                 unanimous: true,

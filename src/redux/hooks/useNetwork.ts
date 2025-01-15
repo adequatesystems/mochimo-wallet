@@ -14,6 +14,6 @@ export const useNetwork = () => {
     return {
         isLoading,
         error,
-        activateTag
+        activateTag,
     };
 }; 
