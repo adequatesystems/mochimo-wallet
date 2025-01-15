@@ -24,10 +24,10 @@ export const selectCurrentWOTSKeyPair = createSelector(
         if (account.wotsIndex === -1) {
             console.log('wots index - 1', account.faddress, account.seed, account.tag)
             return {
-                address: account.faddress, secret: account.seed, wotsWallet: WOTSWallet.create('test', Buffer.from(account.seed, 'hex'), Buffer.from(account.tag, 'hex'), (bytes) => {
-                    const addrHex = Buffer.from(account.faddress, 'hex').toString('hex')
+                address: account.faddress, secret: account.seed, wotsWallet: WOTSWallet.create('test', Buffer.from(account.seed, 'hex'), undefined, (bytes) => {
+                    const addrHex = Buffer.from(account.faddress, 'hex')
                     for (let i = 0; i < addrHex.length; i++) {
-                        bytes[i] = parseInt(addrHex[i], 16)
+                        bytes[i] = addrHex[i]
                     }
                 })
             };
