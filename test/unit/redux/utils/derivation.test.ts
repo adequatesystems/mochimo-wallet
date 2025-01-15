@@ -36,7 +36,7 @@ describe('Derivation', () => {
             const tag1 = Derivation.deriveAccountTag(TEST_SEED, accountIndex);
             const tag2 = Derivation.deriveAccountTag(TEST_SEED, accountIndex);
 
-            expect(tag1.length).toBe(12);
+            expect(tag1.length).toBe(20);
             expect(Buffer.from(tag1)).toEqual(Buffer.from(tag2));
         });
 
@@ -52,7 +52,7 @@ describe('Derivation', () => {
         it('should derive WOTS seed and address', () => {
             const accountSeed = TEST_SEED;
             const wotsIndex = 0;
-            const tag = '010101010101010101010101';
+            const tag = '01'.repeat(20);
 
             const result = Derivation.deriveWotsSeedAndAddress(accountSeed, wotsIndex, tag);
 
@@ -65,7 +65,7 @@ describe('Derivation', () => {
         it('should be deterministic', () => {
             const accountSeed = TEST_SEED;
             const wotsIndex = 0;
-            const tag = '010101010101010101010101';
+            const tag = '01'.repeat(20);
 
             const result1 = Derivation.deriveWotsSeedAndAddress(accountSeed, wotsIndex, tag);
             const result2 = Derivation.deriveWotsSeedAndAddress(accountSeed, wotsIndex, tag);
@@ -76,7 +76,7 @@ describe('Derivation', () => {
 
         it('should derive different addresses for different indices', () => {
             const accountSeed = TEST_SEED;
-            const tag = '010101010101010101010101';
+            const tag = '01'.repeat(20);
 
             const result1 = Derivation.deriveWotsSeedAndAddress(accountSeed, 0, tag);
             const result2 = Derivation.deriveWotsSeedAndAddress(accountSeed, 1, tag);
@@ -87,7 +87,7 @@ describe('Derivation', () => {
 
         it('should reject invalid wots index', () => {
             const accountSeed = TEST_SEED;
-            const tag = '010101010101010101010101';
+            const tag = '01'.repeat(20);
 
             expect(() => {
                 Derivation.deriveWotsSeedAndAddress(accountSeed, -1, tag);
@@ -97,8 +97,8 @@ describe('Derivation', () => {
         it('should handle different tag values', () => {
             const accountSeed = TEST_SEED;
             const wotsIndex = 0;
-            const tag1 = '010101010101010101010101';
-            const tag2 = '020202020202020202020202';
+            const tag1 = '01'.repeat(20);
+            const tag2 = '02'.repeat(20);
 
             const result1 = Derivation.deriveWotsSeedAndAddress(accountSeed, wotsIndex, tag1);
             const result2 = Derivation.deriveWotsSeedAndAddress(accountSeed, wotsIndex, tag2);

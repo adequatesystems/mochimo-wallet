@@ -1,6 +1,6 @@
 import CryptoJS from 'crypto-js';
 import { inflate } from 'pako';
-import { WOTS, WOTSWallet } from 'mochimo-wots-v2';
+import { WOTS } from 'mochimo-wots';
 import { DigestRandomGenerator, intToBytes, wordArrayToBytes } from './digestRandomGenerator';
 
 export interface PublicHeader {

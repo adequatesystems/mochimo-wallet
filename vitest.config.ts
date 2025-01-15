@@ -14,7 +14,7 @@ export default defineConfig({
         },
         deps: {
             inline: [
-                'mochimo-wots-v2',
+                'mochimo-wots',
                 '@scure/bip39'
             ]
         }

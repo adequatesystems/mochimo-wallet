@@ -35,7 +35,7 @@ export class Derivation {
             throw new Error('Invalid wots index');
         }
         const tagBytes = Buffer.from(tag, 'hex')
-        if(tagBytes.length!==20) throw new Error('Invalid tag');
+        if(tagBytes.length!==20) throw new Error('Invalid tag length, expected 20  bytes, got ' + tagBytes.length + '');
         const secret = this.deriveSeed(accountSeed, wotsIndex);
         const ww = WOTSWallet.create('', secret.secret, tagBytes, (bytes)=>{
             if (secret.prng) {

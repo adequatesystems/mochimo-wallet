@@ -1,5 +1,5 @@
 import { wipeBytes } from './random';
-import { WOTSWallet } from 'mochimo-wots-v2';
+import { WOTSWallet } from 'mochimo-wots';
 import { hmacSHA256 } from './hash';
 import CryptoJS from 'crypto-js';
 /**

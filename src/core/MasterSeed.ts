@@ -1,6 +1,6 @@
 import { generateSeed, wipeBytes } from '../crypto/random';
 import { createWOTSWallet } from '../crypto/kdf';
-import { WOTS, WOTSWallet } from 'mochimo-wots-v2';
+import { WOTS, WOTSWallet } from 'mochimo-wots';
 import { EncryptedData } from '../crypto/encryption';
 
 import * as bip39 from '@scure/bip39';
@@ -119,7 +119,7 @@ export class MasterSeed {
         const tag = Derivation.deriveAccountTag(this.seed, accountIndex);
         const { secret: accountSeed, prng } = Derivation.deriveSeed(this.seed, accountIndex);
         //generate first address/public key
-        const address = WOTS.generateRandomAddress_(new Uint8Array(12).fill(1), accountSeed, (bytes) => {
+        const address = WOTS.generateRandomAddress(new Uint8Array(12).fill(1), accountSeed, (bytes) => {
             if (prng) {
                 const len = bytes.length;
                 const randomBytes = prng.nextBytes(len);

@@ -14,7 +14,7 @@ import React from 'react';
 import { vi } from 'vitest';
 
 // Mock WOTS module
-vi.mock('mochimo-wots-v2', () => ({
+vi.mock('mochimo-wots', () => ({
     Transaction: {
         sign: vi.fn().mockImplementation((
             balance,
