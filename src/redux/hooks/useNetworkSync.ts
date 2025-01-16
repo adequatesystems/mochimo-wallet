@@ -11,7 +11,7 @@ interface BalanceCache {
     };
 }
 
-export const useBalancePoller = (interval: number = 10000) => {
+export const useNetworkSync = (interval: number = 10000) => {
     const { accounts } = useAccounts();
     const dispatch = useAppDispatch();
     const timeoutRef = useRef<NodeJS.Timeout>();

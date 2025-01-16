@@ -3,19 +3,19 @@
 import React from 'react';
 import { Provider } from 'react-redux';
 import { store } from './store';
-import { useBalancePoller } from './hooks/useBalancePoller';
+import { useNetworkSync } from './hooks/useNetworkSync';
 
-const BalancePollingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    useBalancePoller();
+const NetworkSyncProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    useNetworkSync();
     return <>{children}</>;
 };
 
 export const MochimoWalletProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     return (
         <Provider store={store}>
-            <BalancePollingProvider>
+            <NetworkSyncProvider>
                 {children}
-            </BalancePollingProvider>
+            </NetworkSyncProvider>
         </Provider>
     );
 };

@@ -2,7 +2,7 @@ import { renderHook, act } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { useBalancePoller } from '../../../../src/redux/hooks/useBalancePoller';
+import { useNetworkSync } from '../../../../src/redux/hooks/useNetworkSync';
 import { NetworkProvider } from '../../../../src/redux/context/NetworkContext';
 import accountReducer from '../../../../src/redux/slices/accountSlice';
 import { Account } from '../../../../src/types';
@@ -69,7 +69,7 @@ describe('useBalancePoller', () => {
             <Provider store={store}>{children}</Provider>
         );
 
-        renderHook(() => useBalancePoller(1000), { wrapper });
+        renderHook(() => useNetworkSync(1000), { wrapper });
 
         // Initial poll
         await act(async () => {
@@ -95,7 +95,7 @@ describe('useBalancePoller', () => {
             <Provider store={store}>{children}</Provider>
         );
 
-        renderHook(() => useBalancePoller(1000), { wrapper });
+        renderHook(() => useNetworkSync(1000), { wrapper });
 
         // First error
         await act(async () => {
@@ -152,7 +152,7 @@ describe('useBalancePoller', () => {
             <Provider store={singleAccountStore}>{children}</Provider>
         );
 
-        renderHook(() => useBalancePoller(1000), { wrapper });
+        renderHook(() => useNetworkSync(1000), { wrapper });
 
         // First poll
         await act(async () => {
@@ -183,7 +183,7 @@ describe('useBalancePoller', () => {
             <Provider store={store}>{children}</Provider>
         );
 
-        renderHook(() => useBalancePoller(1000), { wrapper });
+        renderHook(() => useNetworkSync(1000), { wrapper });
 
         await act(async () => {
             await vi.runOnlyPendingTimersAsync();
@@ -199,7 +199,7 @@ describe('useBalancePoller', () => {
             <Provider store={store}>{children}</Provider>
         );
 
-        const { unmount } = renderHook(() => useBalancePoller(1000), { wrapper });
+        const { unmount } = renderHook(() => useNetworkSync(1000), { wrapper });
 
         unmount();
 
