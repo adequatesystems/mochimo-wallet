@@ -11,6 +11,7 @@ export const useNetwork = () => {
         await dispatch(activateTagAction()).unwrap();
     }, [dispatch]);
 
+
     return {
         isLoading,
         error,

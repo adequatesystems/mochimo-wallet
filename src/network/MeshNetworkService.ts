@@ -4,8 +4,14 @@ import { MochimoApiClient } from "mochimo-mesh-api-client";
 export class MeshNetworkService implements NetworkService {
     public apiUrl: string;
     private apiClient: MochimoApiClient;
+    
     getNetworkStatus(): Promise<{ height: number; nodes: any[]; }> {
-        throw new Error("Method not implemented.");
+        return this.apiClient.getNetworkStatus().then(res=>{
+            return {
+                height: parseInt(res?.current_block_identifier?.index?.toString() ?? '0'),
+                nodes: []
+            }
+        })
     }
     constructor(apiUrl: string) {
         this.apiUrl = apiUrl;
