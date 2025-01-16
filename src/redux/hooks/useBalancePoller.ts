@@ -14,14 +14,14 @@ export const useBalancePoller = (interval: number = 10000) => {
         try {
             // Check network status first
             const status = await NetworkProvider.getNetwork().getNetworkStatus();
-            
+
             // Only update balances if block height has changed
             if (status.height > lastBlockHeight) {
                 setLastBlockHeight(status.height);
-                
+
                 // Update balances for all accounts
                 await Promise.all(accounts.map(async (account) => {
-                    const balance = await NetworkProvider.getNetwork().getBalance(account.tag);
+                    const balance = await NetworkProvider.getNetwork().getBalance("0x" + account.tag);
                     if (balance !== account.balance) {
                         dispatch(updateAccount({
                             id: account.tag,
