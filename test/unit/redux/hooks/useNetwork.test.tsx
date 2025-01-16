@@ -2,104 +2,77 @@ import { renderHook, act } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { useNetwork } from '../../../../src/redux/hooks/useNetwork';
-import walletReducer from '../../../../src/redux/slices/walletSlice';
-import networkReducer from '../../../../src/redux/slices/networkSlice';
-import accountReducer from '../../../../src/redux/slices/accountSlice';
-import { NetworkProvider } from '../../../../src/redux/context/NetworkContext';
-import type { PropsWithChildren } from 'react';
+import networkReducer, { setBlockHeight, setNetworkStatus } from '../../../../src/redux/slices/networkSlice';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 import React from 'react';
-import { vi } from 'vitest';
 
 describe('useNetwork', () => {
     let store: ReturnType<typeof configureStore>;
-    
-    const mockNetworkService = {
-        activateTag: vi.fn().mockResolvedValue({ status: 'success' }),
-        resolveTag: vi.fn(),
-        pushTransaction: vi.fn(),
-        getNetworkStatus: vi.fn().mockReturnValue('connected')
-    };
 
     beforeEach(() => {
-        // Reset mocks
-        vi.clearAllMocks();
-
-        // Create test account
-        const testAccount = {
-            name: 'Test Account',
-            tag: '0'.repeat(64),
-            type: 'standard' as const,
-            faddress: '0'.repeat(64),
-            balance: '1000000',
-            index: 0,
-            source: 'mnemonic' as const,
-            wotsIndex: 0,
-            seed: '0'.repeat(64)
-        };
-        
         store = configureStore({
             reducer: {
-                wallet: walletReducer,
-                network: networkReducer,
-                accounts: accountReducer
+                network: networkReducer
             },
             preloadedState: {
-                wallet: {
-                    initialized: true,
-                    locked: false,
-                    hasWallet: true,
-                    network: 'mainnet',
-                    error: null,
-                    highestAccountIndex: 0,
-                    activeAccount: testAccount.tag
-                },
-                accounts: {
-                    accounts: {
-                        [testAccount.tag]: testAccount
-                    },
-                    selectedAccount: testAccount.tag,
-                    loading: false,
-                    error: null
-                },
                 network: {
-                    status: 'connected',
-                    error: null,
-                    isLoading: false
+                    blockHeight: 0,
+                    isConnected: false,
+                    error: null
                 }
             }
         });
-
-        // Setup network service
-        NetworkProvider.setNetwork(mockNetworkService);
     });
 
-    const wrapper = ({ children }: PropsWithChildren) => (
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
         <Provider store={store}>{children}</Provider>
     );
 
-    it('should handle tag activation', async () => {
+    it('should return initial network state', () => {
         const { result } = renderHook(() => useNetwork(), { wrapper });
 
-        await act(async () => {
-            await result.current.activateTag();
+        expect(result.current).toEqual({
+            blockHeight: 0,
+            isConnected: false,
+            error: null
         });
-
-        expect(mockNetworkService.activateTag).toHaveBeenCalled();
-        expect(result.current.isLoading).toBe(false);
     });
 
-    it('should handle activation errors', async () => {
-        // Remove active account to trigger error
-        store.dispatch({ type: 'accounts/setSelectedAccount', payload: null });
+    it('should reflect block height updates', () => {
+        const { result, rerender } = renderHook(() => useNetwork(), { wrapper });
 
-        const { result } = renderHook(() => useNetwork(), { wrapper });
-
-        await act(async () => {
-            await expect(result.current.activateTag())
-                .rejects.toThrow('No account selected');
+        act(() => {
+            store.dispatch(setBlockHeight(1000));
         });
+        rerender();
 
-        expect(result.current.error).toBeDefined();
-        expect(result.current.isLoading).toBe(false);
+        expect(result.current.blockHeight).toBe(1000);
     });
-}); 
+
+    it('should reflect network connection status updates', () => {
+        const { result, rerender } = renderHook(() => useNetwork(), { wrapper });
+
+        act(() => {
+            store.dispatch(setNetworkStatus({ isConnected: true }));
+        });
+        rerender();
+
+        expect(result.current.isConnected).toBe(true);
+        expect(result.current.error).toBeNull();
+    });
+
+    it('should handle network errors', () => {
+        const { result, rerender } = renderHook(() => useNetwork(), { wrapper });
+
+        act(() => {
+            store.dispatch(setNetworkStatus({ 
+                isConnected: false, 
+                error: 'Network connection failed' 
+            }));
+        });
+        rerender();
+
+        expect(result.current.isConnected).toBe(false);
+        expect(result.current.error).toBe('Network connection failed');
+    });
+});
