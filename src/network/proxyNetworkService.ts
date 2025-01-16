@@ -7,6 +7,9 @@ export class ProxyNetworkService implements NetworkService {
     constructor(apiUrl: string) {
         this.apiUrl = apiUrl;
     }
+    getBalance(tag: string): Promise<string> {
+        throw new Error("Method not implemented.");
+    }
 
     async resolveTag(tag: string): Promise<TagResolveResponse> {
         try {

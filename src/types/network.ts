@@ -78,4 +78,10 @@ export interface NetworkService {
         height: number;
         nodes: NetworkNode[];
     }>;
+
+    /**
+     * Gets a tag's WOTS address balance
+     * @param tag The tag to get the balance of
+     */
+    getBalance(tag: string): Promise<string>;
 } 

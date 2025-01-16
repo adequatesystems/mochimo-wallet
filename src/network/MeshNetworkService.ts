@@ -17,6 +17,16 @@ export class MeshNetworkService implements NetworkService {
         this.apiUrl = apiUrl;
         this.apiClient = new MochimoApiClient(apiUrl);
     }
+    getBalance(tag: string): Promise<string> {
+        return this.apiClient.getAccountBalance(tag).then(res=>{
+            return res.balances[0].value
+        }).catch(err=>{
+            if(err.message.includes('Account not found')){
+                return '0'
+            }
+            throw err
+        })
+    }
 
     resolveTag(tag: string): Promise<TagResolveResponse> {
         return this.apiClient.resolveTag("0x"+tag).then(res => {

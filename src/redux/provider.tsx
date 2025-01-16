@@ -3,11 +3,19 @@
 import React from 'react';
 import { Provider } from 'react-redux';
 import { store } from './store';
+import { useBalancePoller } from './hooks/useBalancePoller';
 
-interface Props {
-    children: React.ReactNode;
-}
+const BalancePollingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    useBalancePoller();
+    return <>{children}</>;
+};
 
-export const MochimoWalletProvider: React.FC<Props> = ({ children }) => {
-    return <Provider store={store}>{children}</Provider>;
+export const MochimoWalletProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    return (
+        <Provider store={store}>
+            <BalancePollingProvider>
+                {children}
+            </BalancePollingProvider>
+        </Provider>
+    );
 };
