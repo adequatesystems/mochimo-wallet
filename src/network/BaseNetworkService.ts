@@ -1,6 +1,9 @@
 import { NetworkService, TagResolveResponse, TransactionResponse, TagActivationResponse } from '../types/network';
 
 export abstract class BaseNetworkService implements NetworkService {
+    getBalance(tag: string): Promise<string> {
+        throw new Error('Method not implemented.');
+    }
     public abstract apiUrl: string;
 
     async resolveTag(tag: string): Promise<TagResolveResponse> {
