@@ -86,9 +86,6 @@ async function createAndSendTransaction(
     const fee = options.fee || BigInt(500);  // Example default fee
     const builder = new TransactionBuilder(NetworkProvider.getNetwork().apiUrl);
 
-    // Create change address from next WOTS index
-
-    const changeAmount = balance - amount - fee;
 
 
     //build a signed tx
@@ -96,9 +93,9 @@ async function createAndSendTransaction(
         senderWotsWallet,
         changeWotsWallet,
         "0x" + Buffer.from(destAddrTag).toString('hex'),
-        BigInt(10000),
-        BigInt(500),
-        options.memo
+        amount,
+        fee,
+        options.memo||''
     );
 
     return { tx: result.submitResult?.transaction_identifier };
