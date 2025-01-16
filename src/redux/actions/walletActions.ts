@@ -17,6 +17,7 @@ import { createAsyncThunk } from '@reduxjs/toolkit';
 import { RootState } from '../store';
 import { DecodeResult } from '@/crypto/mcmDecoder';
 import { ImportAccountsOptions, ImportOptions, WalletJSON } from '../types/state';
+import { WotsAddress } from 'mochimo-wots';
 
 
 
@@ -317,7 +318,6 @@ export const importAccountsFromMcmAction = createAsyncThunk(
             const session = SessionManager.getInstance();
             const storageKey = session.getStorageKey();
             const currentHighestIndex = state.wallet.highestAccountIndex;
-
             // 5. Create and save new accounts
             const accounts: Account[] = filteredEntries.map((entry, index) => ({
                 name: entry.name || `Imported Account ${index + 1}`,
@@ -325,7 +325,7 @@ export const importAccountsFromMcmAction = createAsyncThunk(
                 faddress: entry.address,
                 balance: '0',
                 index: source === 'mnemonic' ? currentHighestIndex + 1 + index : undefined, // Continue from current highest
-                tag: entry.address.slice(-24),
+                tag: Buffer.from(WotsAddress.wotsAddressFromBytes(Buffer.from(entry.address.slice(2144), 'hex')).getTag()).toString('hex'),
                 source: source,
                 wotsIndex: -1,
                 seed: entry.secret,
