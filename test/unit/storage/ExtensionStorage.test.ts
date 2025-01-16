@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { ExtensionStorage } from '../../../src/storage/ExtensionStorage';
-import { EncryptedData } from '../../../src/types/storage';
+import { EncryptedData } from '../../../src/crypto/encryption';
 import { Account } from '../../../src/types';
 import { vi } from 'vitest';
 
