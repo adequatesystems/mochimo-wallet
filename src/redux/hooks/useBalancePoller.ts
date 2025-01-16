@@ -1,50 +1,117 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAccounts } from './useAccounts';
 import { NetworkProvider } from '../context/NetworkContext';
 import { useAppDispatch } from './useStore';
 import { updateAccount } from '../slices/accountSlice';
+
+interface BalanceCache {
+    [blockHeight: number]: {
+        [tag: string]: string;
+    };
+}
 
 export const useBalancePoller = (interval: number = 10000) => {
     const { accounts } = useAccounts();
     const dispatch = useAppDispatch();
     const timeoutRef = useRef<NodeJS.Timeout>();
     const [lastBlockHeight, setLastBlockHeight] = useState<number>(0);
+    const [balanceCache, setBalanceCache] = useState<BalanceCache>({});
+    const [consecutiveErrors, setConsecutiveErrors] = useState(0);
+    const isUpdatingRef = useRef(false);
+    const cacheRef = useRef(balanceCache);
 
-    const pollBalances = async () => {
-        try {
-            // Check network status first
-            const status = await NetworkProvider.getNetwork().getNetworkStatus();
+    // Keep cacheRef in sync with balanceCache
+    useEffect(() => {
+        cacheRef.current = balanceCache;
+    }, [balanceCache]);
 
-            // Only update balances if block height has changed
-            if (status.height > lastBlockHeight) {
-                setLastBlockHeight(status.height);
+    const updateBalances = async (currentHeight: number) => {
+        const currentCache = cacheRef.current[currentHeight] || {};
+        
+        const updates = await Promise.all(accounts.map(async (account) => {
+            if (!account?.tag || currentCache[account.tag]) {
+                return null;
+            }
 
-                // Update balances for all accounts
-                await Promise.all(accounts.map(async (account) => {
-                    const balance = await NetworkProvider.getNetwork().getBalance("0x" + account.tag);
-                    if (balance !== account.balance) {
+            try {
+                const balance = await NetworkProvider.getNetwork()
+                    .getBalance("0x" + account.tag);
+
+                if (!/^\d+$/.test(balance)) {
+                    throw new Error('Invalid balance format received');
+                }
+                
+                return { tag: account.tag, balance };
+            } catch (error) {
+                console.error(`Balance fetch error for account ${account.tag}:`, error);
+                return null;
+            }
+        }).filter(Boolean));
+
+        if (updates.length > 0) {
+            setBalanceCache(prevCache => {
+                const newCache = { ...prevCache };
+                newCache[currentHeight] = { ...currentCache };
+                
+                updates.forEach(update => {
+                    if (update) {
+                        newCache[currentHeight][update.tag] = update.balance;
                         dispatch(updateAccount({
-                            id: account.tag,
-                            updates: {
-                                balance: balance
-                            }
+                            id: update.tag,
+                            updates: { balance: update.balance }
                         }));
                     }
-                }));
-            }
-        } catch (error) {
-            console.error('Balance polling error:', error);
-        } finally {
-            timeoutRef.current = setTimeout(pollBalances, interval);
+                });
+
+                return newCache;
+            });
         }
     };
+
+    const pollBalances = useCallback(async () => {
+        if (!accounts.length || isUpdatingRef.current) {
+            timeoutRef.current = setTimeout(pollBalances, interval);
+            return;
+        }
+
+        try {
+            isUpdatingRef.current = true;
+
+            const status = await NetworkProvider.getNetwork().getNetworkStatus();
+            if (!status?.height || typeof status.height !== 'number') {
+                throw new Error('Invalid network status response');
+            }
+
+            const currentHeight = status.height;
+            if (currentHeight < 0 || currentHeight < lastBlockHeight) {
+                throw new Error('Invalid block height received');
+            }
+
+            const needsUpdate = currentHeight > lastBlockHeight || 
+                              accounts.some(account => !cacheRef.current[currentHeight]?.[account.tag]);
+
+            if (needsUpdate) {
+                await updateBalances(currentHeight);
+                setLastBlockHeight(currentHeight);
+            }
+
+            setConsecutiveErrors(0);
+        } catch (error) {
+            console.error('Balance polling error:', error);
+            setConsecutiveErrors(prev => prev + 1);
+        } finally {
+            isUpdatingRef.current = false;
+            timeoutRef.current = setTimeout(pollBalances, interval);
+        }
+    }, [accounts, interval, lastBlockHeight]);
 
     useEffect(() => {
         pollBalances();
         return () => {
             if (timeoutRef.current) {
                 clearTimeout(timeoutRef.current);
+                timeoutRef.current = undefined;
             }
         };
-    }, [accounts.length]);
+    }, [pollBalances]);
 }; 
