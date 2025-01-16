@@ -325,7 +325,7 @@ export const importAccountsFromMcmAction = createAsyncThunk(
                 faddress: entry.address,
                 balance: '0',
                 index: source === 'mnemonic' ? currentHighestIndex + 1 + index : undefined, // Continue from current highest
-                tag: Buffer.from(WotsAddress.wotsAddressFromBytes(Buffer.from(entry.address.slice(2144), 'hex')).getTag()).toString('hex'),
+                tag: Buffer.from(WotsAddress.wotsAddressFromBytes(Buffer.from(entry.address, 'hex').subarray(0, 2144)).getTag()).toString('hex'),
                 source: source,
                 wotsIndex: -1,
                 seed: entry.secret,
