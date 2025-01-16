@@ -127,6 +127,7 @@ describe('ExtensionStorage', () => {
         });
 
         it('should handle undefined storage key', async () => {
+            //@ts-ignore
             await expect(storage.saveAccount(mockAccount, undefined))
                 .rejects.toThrow();
         });
