@@ -85,3 +85,8 @@ export interface NetworkService {
      */
     getBalance(tag: string): Promise<string>;
 } 
+export interface NetworkState {
+    blockHeight: number;
+    isConnected: boolean;
+    error: string | null;
+}

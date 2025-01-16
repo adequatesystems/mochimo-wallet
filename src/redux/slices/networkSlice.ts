@@ -1,10 +1,7 @@
+import { NetworkState } from '@/types/network';
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-interface NetworkState {
-    blockHeight: number;
-    isConnected: boolean;
-    error: string | null;
-}
+
 
 const initialState: NetworkState = {
     blockHeight: 0,
