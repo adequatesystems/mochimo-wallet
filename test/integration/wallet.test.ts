@@ -260,13 +260,13 @@ describe('Wallet Integration', () => {
 
             // 4. Verify imported accounts
             const accounts = Object.values(state.accounts.accounts);
-            expect(accounts).toHaveLength(3);
+            expect(accounts).toHaveLength(100);
 
             // 5. Verify specific account details from the MCM
             const mainAccount = accounts.find(a => a.name === 'acc1');
             expect(mainAccount).toBeDefined();
             expect(mainAccount?.type).toBe('standard');
-            expect(mainAccount?.tag).toBe('0180d3413d6f6c82047831da');
+            expect(mainAccount?.tag).toBe('cb6031446c46c2661dec9d3cba5e72e935f5bae4');
 
             // Log stored master seed before lock
             const storage = StorageProvider.getStorage();
@@ -288,7 +288,7 @@ describe('Wallet Integration', () => {
 
             // 7. Verify accounts persist after unlock
             const persistedAccounts = Object.values(state.accounts.accounts);
-            expect(persistedAccounts).toHaveLength(3);
+            expect(persistedAccounts).toHaveLength(100);
             expect(persistedAccounts.find(a => a.name === 'acc1')).toBeDefined();
         });
 
