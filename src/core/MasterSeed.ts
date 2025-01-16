@@ -1,6 +1,6 @@
 import { generateSeed, wipeBytes } from '../crypto/random';
 
-import { WOTS, WOTSWallet } from 'mochimo-wots';
+import { WOTS, WotsAddress, WOTSWallet } from 'mochimo-wots';
 import { EncryptedData } from '../crypto/encryption';
 
 import * as bip39 from '@scure/bip39';
@@ -157,13 +157,21 @@ export class MasterSeed {
         return Derivation.deriveAccountTag(this.seed, accountIndex);
     }
 
-    public static deriveWotsIndexFromWotsAddrHash(accountSeed: Uint8Array, wotsAddrHash: Uint8Array, startIndex: number = 0, endIndex: number = 10000 ): number {
+    public static deriveWotsIndexFromWotsAddrHash(accountSeed: Uint8Array, wotsAddrHash: Uint8Array, firstWotsAddress: Uint8Array, startIndex: number = 0, endIndex: number = 10000): number {
         if (!accountSeed) throw new Error('Account seed is empty');
         let ret: number = -1
+
+        const wa = WotsAddress.wotsAddressFromBytes(firstWotsAddress.slice(0, 2144));
+        //check whether the firstWotsAddressHash is the same as the wotsAddrHash
+        if (Buffer.from(wa.getAddrHash()!).toString('hex') === Buffer.from(wotsAddrHash).toString('hex')) {
+            return -1;
+        }
+
         for (let i = startIndex; i < endIndex; i++) {
+
             console.log('Creating WOTS wallet for index', i);
             const secret = Derivation.deriveSeed(accountSeed, i);
-            const ww = WOTSWallet.create('', secret.secret, undefined, (bytes)=>{
+            const ww = WOTSWallet.create('', secret.secret, undefined, (bytes) => {
                 if (secret.prng) {
                     const len = bytes.length;
                     const randomBytes = secret.prng.nextBytes(len);
