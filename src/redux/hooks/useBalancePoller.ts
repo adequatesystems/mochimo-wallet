@@ -3,6 +3,7 @@ import { useAccounts } from './useAccounts';
 import { NetworkProvider } from '../context/NetworkContext';
 import { useAppDispatch } from './useStore';
 import { updateAccount } from '../slices/accountSlice';
+import { setBlockHeight } from '../slices/networkSlice';
 
 interface BalanceCache {
     [blockHeight: number]: {
@@ -83,9 +84,12 @@ export const useBalancePoller = (interval: number = 10000) => {
             }
 
             const currentHeight = status.height;
-            if (currentHeight < 0 || currentHeight < lastBlockHeight) {
+            if (currentHeight < 0) {
                 throw new Error('Invalid block height received');
             }
+
+            // Update network state with new block height
+            dispatch(setBlockHeight(currentHeight));
 
             const needsUpdate = currentHeight > lastBlockHeight || 
                               accounts.some(account => !cacheRef.current[currentHeight]?.[account.tag]);

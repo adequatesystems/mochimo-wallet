@@ -1,20 +1,11 @@
-import { useCallback } from 'react';
-import { useAppDispatch, useAppSelector } from './useStore';
-import { activateTagAction } from '../actions/networkActions';
+import { useSelector } from 'react-redux';
+import { RootState } from '../store';
 
 export const useNetwork = () => {
-    const dispatch = useAppDispatch();
-    const isLoading = useAppSelector(state => state.network.isLoading);
-    const error = useAppSelector(state => state.network.error);
-
-    const activateTag = useCallback(async () => {
-        await dispatch(activateTagAction()).unwrap();
-    }, [dispatch]);
-
-
+    const networkState = useSelector((state: RootState) => state.network);
     return {
-        isLoading,
-        error,
-        activateTag,
+        blockHeight: networkState.blockHeight,
+        isConnected: networkState.isConnected,
+        error: networkState.error
     };
 }; 
