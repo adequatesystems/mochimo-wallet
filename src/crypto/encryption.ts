@@ -1,7 +1,7 @@
 import { AES, enc, lib, PBKDF2, mode, pad } from 'crypto-js';
 
 // Use fewer iterations in test environment
-const DEFAULT_ITERATIONS = process.env.NODE_ENV === 'test' ? 1 : 100000;
+const DEFAULT_ITERATIONS = process.env.NODE_ENV === 'test' ? 10 : 100000;
 
 export interface EncryptedData {
     data: string;      // Base64 encrypted data
