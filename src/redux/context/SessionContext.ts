@@ -6,7 +6,7 @@ export class SessionManager {
     private masterSeed: MasterSeed | null = null;
     private storageKey: Uint8Array | null = null;
 
-    private constructor() {}
+    private constructor() { }
 
     static getInstance(): SessionManager {
         if (!this.instance) {
@@ -15,14 +15,15 @@ export class SessionManager {
         return this.instance;
     }
 
-    async unlock(password: string, storage: Storage): Promise<void> {
+    async unlock(password: string, storage: Storage): Promise<{ jwk: JsonWebKey, storageKey: Uint8Array }> {
         try {
             const masterSeed = await storage.loadMasterSeed();
             if (!masterSeed) throw new Error('No master seed found');
-            
-            this.masterSeed = await MasterSeed.import(masterSeed, password);
+            const derivedKey = await MasterSeed.deriveKey(masterSeed, password);
+            this.masterSeed = await MasterSeed.importFromDerivedKey(masterSeed, derivedKey);
             // Derive and store the storage key
-            this.storageKey = this.masterSeed.deriveStorageKey();
+            const storageKey = this.masterSeed.deriveStorageKey();
+            return { jwk: await crypto.subtle.exportKey('jwk', derivedKey), storageKey };
         } catch (error) {
             throw new Error('Invalid password');
         }
@@ -36,7 +37,7 @@ export class SessionManager {
             throw new Error('Invalid seed');
         }
     }
-    
+
     async unlockWithMnemonic(mnemonic: string): Promise<void> {
         try {
             this.masterSeed = await MasterSeed.fromPhrase(mnemonic);
@@ -50,7 +51,7 @@ export class SessionManager {
         try {
             const masterSeed = await storage.loadMasterSeed();
             if (!masterSeed) throw new Error('No master seed found');
-            
+
             this.masterSeed = await MasterSeed.importFromDerivedKeyJWK(masterSeed, derivedKey);
             this.storageKey = this.masterSeed.deriveStorageKey();
         } catch (error) {

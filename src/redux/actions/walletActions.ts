@@ -54,6 +54,8 @@ export const createWalletAction = createAsyncThunk(
 // Unlock wallet
 export const unlockWalletAction = (key: string, type: 'password' | 'seed' | 'jwk' | 'mnemonic' = 'password'): AppThunk => async (dispatch) => {
     try {
+        let jwk: JsonWebKey | null = null;
+        let sk: Uint8Array | null = null;
         const storage = StorageProvider.getStorage();
         if (type === 'seed') {
             await SessionManager.getInstance().unlockWithSeed(key);
@@ -63,8 +65,11 @@ export const unlockWalletAction = (key: string, type: 'password' | 'seed' | 'jwk
         } else if (type === 'mnemonic') {
             await SessionManager.getInstance().unlockWithMnemonic(key);
         } else {
-            await SessionManager.getInstance().unlock(key, storage);
+            const result = await SessionManager.getInstance().unlock(key, storage);
+            jwk = result.jwk;
+            sk = result.storageKey;
         }
+
         const storageKey = SessionManager.getInstance().getStorageKey();
         // Load accounts and highest index
         const [accounts, highestIndex, activeAccount] = await Promise.all([
@@ -84,6 +89,7 @@ export const unlockWalletAction = (key: string, type: 'password' | 'seed' | 'jwk
         dispatch(setSelectedAccount(activeAccount));
         dispatch(setLocked(false));
         dispatch(setHasWallet(true));
+        return { jwk: jwk, storageKey: storageKey };
     } catch (error) {
         dispatch(setError('Invalid password'));
         throw error;
