@@ -52,7 +52,7 @@ export const createWalletAction = createAsyncThunk(
 
 
 // Unlock wallet
-export const unlockWalletAction = (key: string, type: 'password' | 'seed' | 'jwk' | 'mnemonic' = 'password'): AppThunk => async (dispatch) => {
+export const unlockWalletAction = (key: string, type: 'password' | 'seed' | 'jwk' | 'mnemonic' = 'password'): AppThunk<{ jwk: JsonWebKey | null; storageKey: Uint8Array | null }> => async (dispatch) => {
     try {
         let jwk: JsonWebKey | null = null;
         let sk: Uint8Array | null = null;
