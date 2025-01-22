@@ -52,11 +52,19 @@ export const createWalletAction = createAsyncThunk(
 
 
 // Unlock wallet
-export const unlockWalletAction = (password: string): AppThunk => async (dispatch) => {
+export const unlockWalletAction = (key: string, type: 'password' | 'seed' | 'jwk' | 'mnemonic' = 'password'): AppThunk => async (dispatch) => {
     try {
         const storage = StorageProvider.getStorage();
-
-        await SessionManager.getInstance().unlock(password, storage);
+        if (type === 'seed') {
+            await SessionManager.getInstance().unlockWithSeed(key);
+        } else if (type === 'jwk') {
+            const parsedKey = JSON.parse(key);
+            await SessionManager.getInstance().unlockWithDerivedKey(parsedKey, storage);
+        } else if (type === 'mnemonic') {
+            await SessionManager.getInstance().unlockWithMnemonic(key);
+        } else {
+            await SessionManager.getInstance().unlock(key, storage);
+        }
         const storageKey = SessionManager.getInstance().getStorageKey();
         // Load accounts and highest index
         const [accounts, highestIndex, activeAccount] = await Promise.all([
@@ -318,7 +326,7 @@ export const importAccountsFromMcmAction = createAsyncThunk(
             const accounts: Account[] = filteredEntries.map((entry, index) => {
                 const address = new Uint8Array(Buffer.from(entry.address, 'hex').subarray(0, 2144));
                 const addrHash = WotsAddress.addrFromWots(address)!
-                const tag = Buffer.from(addrHash?.subarray(0,20)).toString('hex')
+                const tag = Buffer.from(addrHash?.subarray(0, 20)).toString('hex')
                 return {
                     name: entry.name || `Imported Account ${index + 1}`,
                     type: source === 'mnemonic' ? 'standard' : 'imported',

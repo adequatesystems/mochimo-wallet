@@ -28,6 +28,36 @@ export class SessionManager {
         }
     }
 
+    async unlockWithSeed(seed: string): Promise<void> {
+        try {
+            this.masterSeed = new MasterSeed(Buffer.from(seed, 'hex'));
+            this.storageKey = this.masterSeed.deriveStorageKey();
+        } catch (error) {
+            throw new Error('Invalid seed');
+        }
+    }
+    
+    async unlockWithMnemonic(mnemonic: string): Promise<void> {
+        try {
+            this.masterSeed = await MasterSeed.fromPhrase(mnemonic);
+            this.storageKey = this.masterSeed.deriveStorageKey();
+        } catch (error) {
+            throw new Error('Invalid mnemonic');
+        }
+    }
+
+    async unlockWithDerivedKey(derivedKey: JsonWebKey, storage: Storage): Promise<void> {
+        try {
+            const masterSeed = await storage.loadMasterSeed();
+            if (!masterSeed) throw new Error('No master seed found');
+            
+            this.masterSeed = await MasterSeed.importFromDerivedKeyJWK(masterSeed, derivedKey);
+            this.storageKey = this.masterSeed.deriveStorageKey();
+        } catch (error) {
+            throw new Error('Invalid derived key');
+        }
+    }
+
     getMasterSeed(): MasterSeed {
         if (!this.masterSeed) throw new Error('Wallet is locked');
         return this.masterSeed;

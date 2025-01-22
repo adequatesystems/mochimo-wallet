@@ -149,4 +149,34 @@ describe('MasterSeed', () => {
             });
         });
     });
+
+    describe('Derived Key Import', () => {
+        it('should import from derived key', async () => {
+            const seed = await MasterSeed.create();
+            const encrypted = await seed.export('test_password');
+
+            const ogMasterSeed = await MasterSeed.import(encrypted, 'test_password');
+
+            const derivedKey = await MasterSeed.deriveKey(encrypted, 'test_password');
+            const importedSeed = await MasterSeed.importFromDerivedKey(encrypted, derivedKey);
+
+            expect(ogMasterSeed.toPhrase()).toEqual(importedSeed.toPhrase());
+            expect(importedSeed).toBeDefined();
+        });
+
+        it('should import from JWK', async () => {
+            const seed = await MasterSeed.create();
+            const encrypted = await seed.export('test_password');
+
+            // Get the original derived key and export as JWK
+            const derivedKey = await MasterSeed.deriveKey(encrypted, 'test_password');
+            const jwk = await crypto.subtle.exportKey('jwk', derivedKey);
+
+            // Import the seed using the JWK-derived key
+            const importedSeed = await MasterSeed.importFromDerivedKeyJWK(encrypted, jwk);
+            
+            // Verify the imported seed matches the original
+            expect(importedSeed.toPhrase()).toEqual(seed.toPhrase());
+        });
+    });
 }); 

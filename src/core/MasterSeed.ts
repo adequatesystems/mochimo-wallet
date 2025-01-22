@@ -7,7 +7,7 @@ import * as bip39 from '@scure/bip39';
 import { wordlist } from '@scure/bip39/wordlists/english';
 import { Derivation } from '../redux/utils/derivation';
 import CryptoJS from 'crypto-js';
-import { deriveKey } from '../crypto/webCrypto';
+
 
 const PBKDF2_ITERATIONS = process.env.NODE_ENV === 'test' ? 1000 : 100000;
 
@@ -234,6 +234,31 @@ export class MasterSeed {
         };
     }
 
+    static async deriveKey(encrypted: EncryptedData, password: string): Promise<CryptoKey> {
+        const key = await crypto.subtle.importKey(
+            'raw',
+            new TextEncoder().encode(password),
+            'PBKDF2',
+            false,
+            ['deriveBits', 'deriveKey']
+        );
+
+
+        const derivedKey = await crypto.subtle.deriveKey(
+            {
+                name: 'PBKDF2',
+                salt: Buffer.from(encrypted.salt, 'base64'),
+                iterations: PBKDF2_ITERATIONS,
+                hash: 'SHA-256'
+            },
+            key,
+            { name: 'AES-GCM', length: 256 },
+            true,
+            ['decrypt']
+        );
+        return derivedKey;
+    }
+
     /**
      * Creates a MasterSeed instance from an encrypted seed
      */
@@ -241,29 +266,7 @@ export class MasterSeed {
         try {
             const encryptedData = Buffer.from(encrypted.data, 'base64');
             const iv = Buffer.from(encrypted.iv, 'base64');
-            const salt = Buffer.from(encrypted.salt, 'base64');
-
-            // Derive key using same parameters
-            const key = await crypto.subtle.importKey(
-                'raw',
-                new TextEncoder().encode(password),
-                'PBKDF2',
-                false,
-                ['deriveBits', 'deriveKey']
-            );
-
-            const derivedKey = await crypto.subtle.deriveKey(
-                {
-                    name: 'PBKDF2',
-                    salt,
-                    iterations: PBKDF2_ITERATIONS,
-                    hash: 'SHA-256'
-                },
-                key,
-                { name: 'AES-GCM', length: 256 },
-                false,
-                ['decrypt']
-            );
+            const derivedKey = await this.deriveKey(encrypted, password);
 
             // Decrypt the seed
             const decrypted = await crypto.subtle.decrypt(
@@ -279,11 +282,35 @@ export class MasterSeed {
         }
     }
 
+    static async importFromDerivedKey(encrypted: EncryptedData, derivedKey: CryptoKey): Promise<MasterSeed> {
+        // Decrypt the seed
+        const encryptedData = Buffer.from(encrypted.data, 'base64');
+        const iv = Buffer.from(encrypted.iv, 'base64');
+        const decrypted = await crypto.subtle.decrypt(
+            { name: 'AES-GCM', iv },
+            derivedKey,
+            encryptedData
+        );
+
+        return new MasterSeed(new Uint8Array(decrypted));
+    }
+
+    static async importFromDerivedKeyJWK(encrypted: EncryptedData, derivedKey: JsonWebKey): Promise<MasterSeed> {
+        const importedKey = await crypto.subtle.importKey(
+            'jwk',
+            derivedKey,
+            { name: 'AES-GCM', length: 256 },
+            true,
+            ['decrypt']
+        );
+        return this.importFromDerivedKey(encrypted, importedKey);
+    }
+
     /**
      * Derives a storage key from the master seed using HKDF-like construction
      * Returns a 32-byte key suitable for AES-256
      */
-     deriveStorageKey(): Uint8Array {
+    deriveStorageKey(): Uint8Array {
         if (this._isLocked || !this.seed) {
             throw new Error('Master seed is locked');
         }
@@ -332,7 +359,7 @@ export class MasterSeed {
         // Initial hash with domain separator (matching CryptoJS implementation)
         const domainSeparator = encoder.encode('mochimo_storage_key_v1');
         const seedBytes = this.seed;
-        
+
         // Concatenate domain separator and seed (matching CryptoJS)
         const initialData = new Uint8Array(domainSeparator.length + seedBytes.length);
         initialData.set(domainSeparator);

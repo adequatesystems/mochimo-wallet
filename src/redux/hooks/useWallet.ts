@@ -17,8 +17,8 @@ export const useWallet = () => {
         return dispatch(createWalletAction({ password, mnemonic }));
     }, [dispatch]);
 
-    const unlockWallet = useCallback(async (password: string) => {
-        return dispatch(unlockWalletAction(password));
+    const unlockWallet = useCallback(async (password: string, type: 'password' | 'seed' | 'jwk' | 'mnemonic' = 'password') => {
+        return dispatch(unlockWalletAction(password, type));
     }, [dispatch]);
 
     const lockWallet = useCallback(() => {
