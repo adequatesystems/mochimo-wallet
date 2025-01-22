@@ -13,7 +13,7 @@ import transactionReducer from '../../../../src/redux/slices/transactionSlice';
 describe('Wallet Actions', () => {
     let store: AppStore;
     let mockStorage: MockStorage;
-    let mockSession: SessionManager;
+    // let mockSession: SessionManager;
 
     beforeEach(() => {
         store = configureStore({
@@ -28,16 +28,10 @@ describe('Wallet Actions', () => {
 
         mockStorage = new MockStorage();
         StorageProvider.setStorage(mockStorage);
+        SessionManager.getInstance()
 
-        mockSession = {
-            setMasterSeed: vi.fn(),
-            unlock: vi.fn(),
-            lock: vi.fn(),
-            getMasterSeed: vi.fn(),
-            getStorageKey: vi.fn()
-        } as unknown as SessionManager;
-
-        vi.spyOn(SessionManager, 'getInstance').mockReturnValue(mockSession);
+        
+        // vi.spyOn(SessionManager, 'getInstance').mockReturnValue(mockSession);
     });
 
     it('should create a wallet successfully', async () => {
@@ -56,7 +50,7 @@ describe('Wallet Actions', () => {
 
     it('should handle creation errors', async () => {
         const error = new Error('Creation failed');
-        vi.spyOn(MasterSeed, 'create').mockRejectedValue(error);
+        vi.spyOn(MasterSeed, 'create').mockRejectedValueOnce(error);
 
         await store.dispatch(createWalletAction({ password: 'password' }));
         const state = store.getState().wallet;
@@ -64,16 +58,19 @@ describe('Wallet Actions', () => {
     });
 
     it('should unlock wallet successfully', async () => {
-        await store.dispatch(unlockWalletAction('password'));
-        expect(mockSession.unlock).toHaveBeenCalledWith('password', mockStorage);
+        //create wallet
+        await store.dispatch(createWalletAction({ password: 'password' }));
+        //should not throw error
         
+        await store.dispatch(unlockWalletAction('password'));
+
         const state = store.getState().wallet;
         expect(state.locked).toBe(false);
         expect(state.error).toBeNull();
     });
 
     it('should handle lock errors', async () => {
-        vi.spyOn(mockSession, 'lock').mockRejectedValue(new Error('Lock failed'));
+        vi.spyOn(SessionManager.getInstance(), 'lock').mockRejectedValue(new Error('Lock failed'));
         await store.dispatch(lockWalletAction());
         const state = store.getState().wallet;
         expect(state.error).toBe('Failed to lock wallet');

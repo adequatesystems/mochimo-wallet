@@ -23,8 +23,10 @@ export class SessionManager {
             this.masterSeed = await MasterSeed.importFromDerivedKey(masterSeed, derivedKey);
             // Derive and store the storage key
             const storageKey = this.masterSeed.deriveStorageKey();
+            this.storageKey = storageKey;
             return { jwk: await crypto.subtle.exportKey('jwk', derivedKey), storageKey };
         } catch (error) {
+            console.error('Error unlocking wallet', error);
             throw new Error('Invalid password');
         }
     }

@@ -254,7 +254,6 @@ export const importFromMcmFileAction = createAsyncThunk(
 
             // 2. Get MCM data
             const { entries, privateHeader } = mcmData;
-            console.log('Private header:', privateHeader);
             const detSeed = privateHeader['deterministic seed hex'];
 
             // 3. Create master seed and set up wallet
