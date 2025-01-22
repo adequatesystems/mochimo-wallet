@@ -8,12 +8,13 @@ import { MasterSeed } from '@/core/MasterSeed';
 import { Derivation } from '../utils/derivation';
 import { SessionManager } from '../context/SessionContext';
 import { NetworkProvider } from '../context/NetworkContext';
-import { TransactionBuilder } from 'mochimo-mesh-api-client';
-import { WOTSWallet } from 'mochimo-wots';
+import { isValidMemo, TransactionBuilder } from 'mochimo-mesh-api-client';
+import { TagUtils, WOTSWallet } from 'mochimo-wots';
 
 interface SendTransactionParams {
     to: string;
     amount: bigint;
+    memo?:string;
 }
 
 export const sendTransactionAction = createAsyncThunk(
@@ -33,7 +34,12 @@ export const sendTransactionAction = createAsyncThunk(
         try {
             const tagResolve = await NetworkProvider.getNetwork().resolveTag(selectedAccount.tag)
             const balance = BigInt(tagResolve.balanceConsensus)
-
+            //validate memo
+            if(params.memo){
+                if(!isValidMemo(params.memo)){
+                    throw new Error('Invalid memo');
+                }
+            }
 
             const { amount } = params;
 
@@ -42,7 +48,8 @@ export const sendTransactionAction = createAsyncThunk(
                 changeKeyPair.wotsWallet!, 
                 Buffer.from(params.to, 'hex'), 
                 amount, 
-                balance
+                balance,
+                {memo: params.memo}
             );
 
             // Send transaction
