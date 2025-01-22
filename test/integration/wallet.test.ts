@@ -64,10 +64,10 @@ describe('Wallet Integration', () => {
         it('should handle complete wallet lifecycle with accounts', async () => {
             // 1. Create wallet
             await store.dispatch(createWalletAction({ password: testPassword }));
-            
+
             // 2. Unlock wallet before creating accounts
             await store.dispatch(unlockWalletAction(testPassword));
-            
+
             // 3. Create 5 accounts
             for (let i = 0; i < 5; i++) {
                 await store.dispatch(createAccountAction(`Account ${i + 1}`));
@@ -107,13 +107,13 @@ describe('Wallet Integration', () => {
                 expect(account.type).toBe('standard');
                 expect(account.tag).toBeDefined();
                 expect(account.faddress).toBeDefined();
-                expect(account.seed).toBeDefined(); 
+                expect(account.seed).toBeDefined();
             });
         });
 
         it('should properly set wallet state after creation', async () => {
             await store.dispatch(createWalletAction({ password: testPassword }));
-            
+
             const state = store.getState();
             expect(state.wallet).toEqual({
                 hasWallet: true,
@@ -129,7 +129,7 @@ describe('Wallet Integration', () => {
             // 1. Create and unlock wallet
             await store.dispatch(createWalletAction({ password: testPassword }));
             await store.dispatch(unlockWalletAction(testPassword));
-            
+
             // Create 3 accounts
             for (let i = 0; i < 3; i++) {
                 await store.dispatch(createAccountAction(`Account ${i + 1}`));
@@ -147,7 +147,7 @@ describe('Wallet Integration', () => {
             // Verify renames
             state = store.getState();
             const renamedAccounts = Object.values(state.accounts.accounts);
-            
+
             // First two should be renamed
             expect(renamedAccounts[0].name).toBe('Renamed Account 1');
             expect(renamedAccounts[1].name).toBe('Renamed Account 2');
@@ -174,7 +174,7 @@ describe('Wallet Integration', () => {
             // 1. Create and unlock wallet
             await store.dispatch(createWalletAction({ password: testPassword }));
             await store.dispatch(unlockWalletAction(testPassword));
-            
+
             // Create 3 accounts
             for (let i = 0; i < 3; i++) {
                 await store.dispatch(createAccountAction(`Account ${i + 1}`));
@@ -182,7 +182,7 @@ describe('Wallet Integration', () => {
 
             let state = store.getState();
             const originalAccounts = Object.values(state.accounts.accounts);
-            
+
             // Store original indexes and tags
             const originalOrder = originalAccounts.map(account => ({
                 tag: account.tag,
@@ -221,7 +221,7 @@ describe('Wallet Integration', () => {
             state = store.getState();
             const persistedAccounts = Object.values(state.accounts.accounts)
                 .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)); // Sort by order property
-            
+
             // Check order persisted
             expect(persistedAccounts[0].tag).toBe(originalOrder[2].tag);
             expect(persistedAccounts[1].tag).toBe(originalOrder[0].tag);
@@ -239,7 +239,7 @@ describe('Wallet Integration', () => {
 
         it('should import wallet from MCM file', async () => {
             const mcmPassword = 'kandokando'; // MCM file password
-            
+
             // 1. Read MCM file from fixtures
             const mcmPath = path.join(__dirname, '../fixtures/test.mcm');
             const mcmData = await fs.readFile(mcmPath);
@@ -351,7 +351,7 @@ describe('Wallet Integration', () => {
             const mcmPassword = 'kandokando';
             const mcmPath = path.join(__dirname, '../fixtures/test.mcm');
             const mcmData = await fs.readFile(mcmPath);
-            const decoded = await MCMDecoder.decode(mcmData, mcmPassword);  
+            const decoded = await MCMDecoder.decode(mcmData, mcmPassword);
             // console.log('Decoded MCM data len:', decoded.entries.length);
             // Import specific accounts
             const result = await store.dispatch(importAccountsFromMcmAction({
@@ -364,14 +364,14 @@ describe('Wallet Integration', () => {
             expect(result.importedCount).toBe(2);
             state = store.getState();
             const accounts = Object.values(state.accounts.accounts);
-            
+
             // Should have original + imported accounts
             expect(accounts).toHaveLength(4);
-            
+
             // Verify original accounts still exist
             expect(accounts.find(a => a.name === 'Original Account 1')).toBeDefined();
             expect(accounts.find(a => a.name === 'Original Account 2')).toBeDefined();
-            
+
             // Verify imported accounts
             expect(accounts.find(a => a.name === 'acc1')).toBeDefined();
             expect(accounts.find(a => a.name === 'acc2')).toBeDefined();
@@ -389,6 +389,45 @@ describe('Wallet Integration', () => {
             state = store.getState();
             const persistedAccounts = Object.values(state.accounts.accounts);
             expect(persistedAccounts).toHaveLength(4);
+        });
+        it.only('should create new accounts correctly from other store instances', async () => {
+            const store2 = configureStore({
+                reducer: {
+                    wallet: walletReducer,
+                    accounts: accountReducer,
+                    network: networkReducer,
+                    transaction: transactionReducer
+                }
+            });
+            const store3 = configureStore({
+                reducer: {
+                    wallet: walletReducer,
+                    accounts: accountReducer,
+                    network: networkReducer,
+                    transaction: transactionReducer
+                }
+            });
+            //create a wallet in store2
+            await store2.dispatch(createWalletAction({ password: testPassword }));
+            await store2.dispatch(unlockWalletAction(testPassword));
+            const account1 = await store2.dispatch(createAccountAction('Account 1'));
+
+            //lock the wallet in store2
+            await store2.dispatch(lockWalletAction());
+
+            //unlock the wallet in store3
+            await store3.dispatch(unlockWalletAction(testPassword));
+            //check if the account exists in store3
+            let state = store3.getState();
+            expect(Object.keys(state.accounts.accounts)).toHaveLength(1);
+            expect(state.accounts.accounts[account1.tag].name).toBe('Account 1');
+
+            //add a new account to store3
+            const account2 = await store3.dispatch(createAccountAction('Account 2'))
+            state = store3.getState();
+            expect(Object.keys(state.accounts.accounts)).toHaveLength(2);
+            expect(state.accounts.accounts[account2.tag].name).toBe('Account 2');
+
         });
     });
 }); 

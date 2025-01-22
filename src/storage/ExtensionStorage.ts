@@ -91,7 +91,9 @@ export class ExtensionStorage implements Storage {
 
     async loadHighestIndex(): Promise<number> {
         const result = await this.storage.get(this.getKey('highestIndex'));
-        return result[this.getKey('highestIndex')] || -1;
+        let highestIndex = result[this.getKey('highestIndex')]
+        if(highestIndex===undefined || highestIndex===null) return -1;
+        return highestIndex;
     }
 
     async clear(): Promise<void> {
