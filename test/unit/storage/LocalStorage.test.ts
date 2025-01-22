@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { LocalStorage } from '../../../src/storage/LocalStorage';
-import { EncryptedData } from '../../../src/crypto/encryption';
+import { EncryptedData } from '../../../src/crypto/webCrypto';
 import { Account } from '../../../src/types/account';
 const storageKey = new Uint8Array(10).fill(1);
 describe('LocalStorage', () => {

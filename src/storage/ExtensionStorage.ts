@@ -1,6 +1,6 @@
 import { Storage, StorageArea } from '../types/storage';
 import { Account } from '../types/account';
-import { EncryptedData } from '../crypto/encryption';
+import { EncryptedData } from '../crypto/webCrypto';
 import { encryptAccount, decryptAccount, EncryptedAccount } from '../crypto/accountEncryption';
 
 export class ExtensionStorage implements Storage {

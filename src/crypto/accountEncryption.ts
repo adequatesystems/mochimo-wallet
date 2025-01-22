@@ -1,5 +1,5 @@
 import { Account } from '../types/account';
-import { encrypt, decrypt, EncryptedData } from './encryption';
+import { encrypt, decrypt, EncryptedData } from './webCrypto';
 
 export interface EncryptedAccount {
     tag: string; // Keep unencrypted for lookups

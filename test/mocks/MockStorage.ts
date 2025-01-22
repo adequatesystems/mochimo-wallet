@@ -1,5 +1,5 @@
 import { Storage } from '../../src/types/storage';
-import { EncryptedData } from '../../src/crypto/encryption';
+import { EncryptedData } from '../../src/crypto/webCrypto';
 import { Account } from '../../src/types';
 import { decryptAccount, encryptAccount, EncryptedAccount } from '../../src/crypto/accountEncryption';
 export class MockStorage implements Storage {

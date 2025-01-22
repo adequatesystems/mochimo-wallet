@@ -1,5 +1,5 @@
 import { Account } from './account';
-import { EncryptedData } from '../crypto/encryption';
+import { EncryptedData } from '../crypto/webCrypto';
 
 export interface Storage {
     saveMasterSeed(seed: EncryptedData): Promise<void>;

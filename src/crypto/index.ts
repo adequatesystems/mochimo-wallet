@@ -1,5 +1,5 @@
 export * from './accountEncryption';
-export * from './encryption';
+export * from './webCrypto';
 export * from './mcmDecoder';
 export * from './hash';
 export * from './digestRandomGenerator';

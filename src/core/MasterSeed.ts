@@ -1,7 +1,7 @@
 import { generateSeed, wipeBytes } from '../crypto/random';
 
 import { WOTS, WotsAddress, WOTSWallet } from 'mochimo-wots';
-import { EncryptedData } from '../crypto/encryption';
+import { EncryptedData } from '../crypto/webCrypto';
 
 import * as bip39 from '@scure/bip39';
 import { wordlist } from '@scure/bip39/wordlists/english';

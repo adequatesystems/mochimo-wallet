@@ -1,23 +1,19 @@
+import { createAsyncThunk } from '@reduxjs/toolkit';
+import { WotsAddress } from 'mochimo-wots';
+import { MasterSeed } from '../../core/MasterSeed';
+import { Account } from '../../types/account';
+import { SessionManager } from '../context/SessionContext';
+import { StorageProvider } from '../context/StorageContext';
+import { addAccount, bulkAddAccounts, setSelectedAccount } from '../slices/accountSlice';
 import {
+    setError,
+    setHasWallet,
+    setHighestIndex,
     setInitialized,
     setLocked,
-    setHasWallet,
-    setError,
-    setHighestIndex,
-
 } from '../slices/walletSlice';
-import { addAccount, bulkAddAccounts, setSelectedAccount } from '../slices/accountSlice';
-import { StorageProvider } from '../context/StorageContext';
-import { SessionManager } from '../context/SessionContext';
-import { Account } from '../../types/account';
-import { EncryptedData } from '../../crypto/encryption';
-import { MasterSeed } from '../../core/MasterSeed';
-import { AppThunk } from '../store';
-import { createAsyncThunk } from '@reduxjs/toolkit';
-import { RootState } from '../store';
-import { DecodeResult } from '@/crypto/mcmDecoder';
+import { AppThunk, RootState } from '../store';
 import { ImportAccountsOptions, ImportOptions, WalletJSON } from '../types/state';
-import { WotsAddress, WOTSWallet } from 'mochimo-wots';
 
 
 

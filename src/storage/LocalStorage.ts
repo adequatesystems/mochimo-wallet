@@ -1,6 +1,6 @@
 import { Storage } from '../types/storage';
 import { Account } from '../types/account';
-import { EncryptedData } from '../crypto/encryption';
+import { EncryptedData } from '../crypto/webCrypto';
 import { encryptAccount, decryptAccount, EncryptedAccount } from '../crypto/accountEncryption';
 
 export class LocalStorage implements Storage {
