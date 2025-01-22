@@ -7,6 +7,7 @@ import * as bip39 from '@scure/bip39';
 import { wordlist } from '@scure/bip39/wordlists/english';
 import { Derivation } from '../redux/utils/derivation';
 import CryptoJS from 'crypto-js';
+import { deriveKey } from '../crypto/webCrypto';
 
 const PBKDF2_ITERATIONS = process.env.NODE_ENV === 'test' ? 1000 : 100000;
 
@@ -282,7 +283,7 @@ export class MasterSeed {
      * Derives a storage key from the master seed using HKDF-like construction
      * Returns a 32-byte key suitable for AES-256
      */
-    deriveStorageKey(): Uint8Array {
+     deriveStorageKey(): Uint8Array {
         if (this._isLocked || !this.seed) {
             throw new Error('Master seed is locked');
         }
@@ -313,5 +314,78 @@ export class MasterSeed {
         return new Uint8Array(
             Buffer.from(storageKey.toString(CryptoJS.enc.Hex), 'hex')
         );
+    }
+
+    /**
+     * Derives a storage key using native Web Crypto API
+     */
+    async deriveStorageKeyNative(): Promise<Uint8Array> {
+        if (this._isLocked || !this.seed) {
+            throw new Error('Master seed is locked');
+        }
+
+        const encoder = new TextEncoder();
+
+        // Debug: Log seed value
+        console.log('Seed:', Buffer.from(this.seed).toString('hex'));
+
+        // Initial hash with domain separator (matching CryptoJS implementation)
+        const domainSeparator = encoder.encode('mochimo_storage_key_v1');
+        const seedBytes = this.seed;
+        
+        // Concatenate domain separator and seed (matching CryptoJS)
+        const initialData = new Uint8Array(domainSeparator.length + seedBytes.length);
+        initialData.set(domainSeparator);
+        initialData.set(seedBytes, domainSeparator.length);
+
+
+        // Create SHA-256 hash of concatenated data
+        const initialHashBuffer = await crypto.subtle.digest('SHA-256', initialData);
+        const initialHash = new Uint8Array(initialHashBuffer);
+
+
+        // HMAC extraction step
+        const extractKey = await crypto.subtle.importKey(
+            'raw',
+            encoder.encode('mochimo_storage_salt'),
+            {
+                name: 'HMAC',
+                hash: 'SHA-256'
+            },
+            false,
+            ['sign']
+        );
+        const prkBuffer = await crypto.subtle.sign(
+            'HMAC',
+            extractKey,
+            initialHash
+        );
+        const prk = new Uint8Array(prkBuffer);
+
+        // Debug: Log PRK
+        console.log('PRK:', Buffer.from(prk).toString('hex'));
+
+        // Expansion step
+        const expandKey = await crypto.subtle.importKey(
+            'raw',
+            prk,
+            {
+                name: 'HMAC',
+                hash: 'SHA-256'
+            },
+            false,
+            ['sign']
+        );
+        const storageKeyBuffer = await crypto.subtle.sign(
+            'HMAC',
+            expandKey,
+            encoder.encode('mochimo_storage_info')
+        );
+        const storageKey = new Uint8Array(storageKeyBuffer);
+
+        // Debug: Log final key
+        console.log('Storage Key:', Buffer.from(storageKey).toString('hex'));
+
+        return storageKey;
     }
 }

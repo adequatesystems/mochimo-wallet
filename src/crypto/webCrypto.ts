@@ -145,4 +145,4 @@ export async function deriveSubkey(masterKey: Uint8Array, index: number): Promis
     );
 
     return new Uint8Array(signature);
-} 
+}
