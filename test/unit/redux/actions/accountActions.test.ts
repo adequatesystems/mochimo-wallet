@@ -167,8 +167,12 @@ describe('Account Actions', () => {
             await store.dispatch(deleteAccountAction(accounts[1].tag));
 
             const state = store.getState();
-            expect(state.accounts.accounts[accounts[1].tag]).toBeUndefined();
-            expect(Object.keys(state.accounts.accounts)).toHaveLength(1);
+            expect(state.accounts.accounts[accounts[1].tag]).toBeDefined();
+            expect(state.accounts.accounts[accounts[1].tag].isDeleted).toBe(true);
+            expect(Object.keys(state.accounts.accounts)).toHaveLength(2);
+            await mockStorage.loadAccount(accounts[1].tag, SessionManager.getInstance().getStorageKey()).then(account => {
+                expect(account?.isDeleted).toBe(true);
+            });
         });
 
         it('should not allow deleting the last account', async () => {

@@ -16,7 +16,11 @@ export const useAccounts = () => {
     const nextWOTSKeyPair = useSelector(selectNextWOTSKeyPair);
 
     const sortedAccounts = useMemo(() => {
-        return Object.values(accounts).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+        return Object.values(accounts).filter(a => !a.isDeleted).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    }, [accounts]);
+
+    const deletedAccounts = useMemo(() => {
+        return Object.values(accounts).filter(a => a.isDeleted);
     }, [accounts]);
 
     const createAccount = useCallback(async (name: string) => {
@@ -44,6 +48,7 @@ export const useAccounts = () => {
 
     return {
         accounts: sortedAccounts,
+        deletedAccounts: deletedAccounts,
         selectedAccount,
         createAccount,
         renameAccount,

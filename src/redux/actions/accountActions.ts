@@ -180,16 +180,15 @@ export const deleteAccountAction = (
 
         const storage = StorageProvider.getStorage();
 
-        // Remove from storage
-        await storage.deleteAccount(accountId);
+        //update the account to be deleted
+        await dispatch(updateAccountAction(accountId, { isDeleted: true }));
+
 
         // If deleting selected account, clear selection from storage
         if (state.accounts.selectedAccount === accountId) {
             await storage.saveActiveAccount('');
         }
 
-        // Update Redux state
-        dispatch(removeAccount(accountId));
         if (accountId === state.accounts.selectedAccount) dispatch(setSelectedAccount(null));
 
     } catch (error) {
@@ -207,7 +206,7 @@ export const reorderAccountsAction = (
         const accounts = state.accounts.accounts;
 
         // Validate the new order
-        const currentIds = new Set(Object.keys(accounts));
+        const currentIds = new Set(Object.keys(accounts).filter(id => !accounts[id].isDeleted));
         const newIds = new Set(Object.keys(newOrder));
 
         // Check if all accounts are included

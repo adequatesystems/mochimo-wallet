@@ -14,4 +14,5 @@ export interface Account {
     seed: string;
     faddress: string;// first address generated for this account
     avatar?: string;
+    isDeleted?: boolean;
 } 

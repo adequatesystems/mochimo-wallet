@@ -14,7 +14,7 @@ export const selectSelectedAccount = (state: RootState) => {
 
 export const selectOrderedAccounts = createSelector(
     selectAccounts,
-    (accounts) => Object.values(accounts).sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    (accounts) => Object.values(accounts).filter(a => !a.isDeleted).sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
 );
 
 export const selectCurrentWOTSKeyPair = createSelector(
