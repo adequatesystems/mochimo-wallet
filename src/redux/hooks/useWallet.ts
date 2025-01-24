@@ -6,6 +6,7 @@ import { StorageProvider } from '../context/StorageContext';
 import { DecodeResult } from '@/crypto';
 import { setHasWallet } from '../slices/walletSlice';
 import { WalletJSON } from '../types/state';
+import { MasterSeed } from '@/core/MasterSeed';
 
 export const useWallet = () => {
     const dispatch = useAppDispatch();
@@ -19,6 +20,17 @@ export const useWallet = () => {
 
     const unlockWallet = useCallback(async (password: string, type: 'password' | 'seed' | 'jwk' | 'mnemonic' = 'password') => {
         return dispatch(unlockWalletAction(password, type));
+    }, [dispatch]);
+
+    const verifyWalletOwnership = useCallback(async (password: string) => {
+        const masterSeed = await StorageProvider.getStorage().loadMasterSeed();
+        if(!masterSeed) return false;
+        try {
+            await MasterSeed.import(masterSeed, password);
+            return true;
+        } catch (error) {
+            return false;
+        }
     }, [dispatch]);
 
     const lockWallet = useCallback(() => {
@@ -64,6 +76,7 @@ export const useWallet = () => {
         importAccountsFromMcm,
         setHasWalletStatus,
         importWalletJSON,
-        exportWalletJSON
+        exportWalletJSON,
+        verifyWalletOwnership
     };
 }; 
