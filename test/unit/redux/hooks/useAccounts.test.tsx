@@ -69,8 +69,8 @@ describe('useAccounts', () => {
                 await result.current.createAccount('Test Account');
             });
 
-            const deletePromise = result.current.deleteAccount(result.current.accounts[0].tag);
-            await expect(deletePromise).rejects.toThrow('Cannot delete last account');
+            const deletePromise = await result.current.deleteAccount(result.current.accounts[0].tag);
+            expect(deletePromise.type).toBe('accounts/delete/rejected');
         });
 
         it('should delete an account when multiple exist', async () => {
@@ -133,9 +133,8 @@ describe('useAccounts', () => {
         it('should handle non-existent account operations', async () => {
             const { result } = renderAccountsHook();
 
-            await expect(
-                result.current.deleteAccount('nonexistent')
-            ).rejects.toThrow('Account not found');
+            const deletePromise = await result.current.deleteAccount('nonexistent');
+            expect(deletePromise.type).toBe('accounts/delete/rejected');
 
             await expect(
                 result.current.renameAccount('nonexistent', 'New Name')

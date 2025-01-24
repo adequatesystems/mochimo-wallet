@@ -1,4 +1,4 @@
-import { AppThunk } from '../store';
+import { AppThunk, AsyncThunkConfig } from '../store';
 
 import { setError } from '../slices/walletSlice';
 import { StorageProvider } from '../context/StorageContext';
@@ -6,6 +6,7 @@ import { Account } from '../../types/account';
 import { Derivation } from '../utils/derivation';
 import { updateAccount, reorderAccounts, removeAccount, bulkAddAccounts, setSelectedAccount } from '../slices/accountSlice';
 import { SessionManager } from '../context/SessionContext';
+import { createAsyncThunk } from '@reduxjs/toolkit';
 
 
 // Update account
@@ -161,10 +162,16 @@ export const bulkImportMCMAccountsAction = (
 };
 
 // Delete account
-export const deleteAccountAction = (
-    accountId: string
-): AppThunk => async (dispatch, getState) => {
-    try {
+
+export const deleteAccountAction = createAsyncThunk<
+    void,  // Return type
+    string,              // Argument type (accountId)
+    AsyncThunkConfig     // Configuration including state and dispatch types
+>(
+    'accounts/delete',
+    async (accountId: string, { dispatch, getState }) => {
+        
+        try {
         const state = getState();
         const account = state.accounts.accounts[accountId];
 
@@ -195,7 +202,7 @@ export const deleteAccountAction = (
         dispatch(setError('Failed to delete account'));
         throw error;
     }
-};
+});
 
 // Reorder accounts
 export const reorderAccountsAction = (

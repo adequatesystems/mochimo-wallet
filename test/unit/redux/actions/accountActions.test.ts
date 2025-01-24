@@ -177,16 +177,14 @@ describe('Account Actions', () => {
 
         it('should not allow deleting the last account', async () => {
             const [account] = await setupWalletWithAccounts();
-            await expect(
-                store.dispatch(deleteAccountAction(account.tag))
-            ).rejects.toThrow();
+            const result = await store.dispatch(deleteAccountAction(account.tag));
+            expect(result.type).toBe('accounts/delete/rejected');
         });
 
         it('should fail for non-existent account', async () => {
             await setupWalletWithAccounts();
-            await expect(
-                store.dispatch(deleteAccountAction('nonexistent'))
-            ).rejects.toThrow();
+            const result = await store.dispatch(deleteAccountAction('nonexistent'));
+            expect(result.type).toBe('accounts/delete/rejected');
         });
     });
 }); 
