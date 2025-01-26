@@ -345,7 +345,6 @@ export const importAccountsFromMcmAction = createAsyncThunk(
                     order: Object.keys(state.accounts.accounts).length + index // Add to end
                 }
             });
-            console.log('Imported accounts:', accounts);
 
             // 6. Save accounts
             await Promise.all([

@@ -170,7 +170,6 @@ export class MasterSeed {
 
         for (let i = startIndex; i < endIndex; i++) {
 
-            console.log('Creating WOTS wallet for index', i);
             const secret = Derivation.deriveSeed(accountSeed, i);
             const ww = WOTSWallet.create('', secret.secret, undefined, (bytes) => {
                 if (secret.prng) {
@@ -353,8 +352,6 @@ export class MasterSeed {
 
         const encoder = new TextEncoder();
 
-        // Debug: Log seed value
-        console.log('Seed:', Buffer.from(this.seed).toString('hex'));
 
         // Initial hash with domain separator (matching CryptoJS implementation)
         const domainSeparator = encoder.encode('mochimo_storage_key_v1');
@@ -389,8 +386,6 @@ export class MasterSeed {
         );
         const prk = new Uint8Array(prkBuffer);
 
-        // Debug: Log PRK
-        console.log('PRK:', Buffer.from(prk).toString('hex'));
 
         // Expansion step
         const expandKey = await crypto.subtle.importKey(
@@ -409,9 +404,6 @@ export class MasterSeed {
             encoder.encode('mochimo_storage_info')
         );
         const storageKey = new Uint8Array(storageKeyBuffer);
-
-        // Debug: Log final key
-        console.log('Storage Key:', Buffer.from(storageKey).toString('hex'));
 
         return storageKey;
     }

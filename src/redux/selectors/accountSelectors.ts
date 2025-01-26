@@ -22,7 +22,6 @@ export const selectCurrentWOTSKeyPair = createSelector(
     (account) => {
         if (!account) return null;
         if (account.wotsIndex === -1) {
-            console.log('wots index - 1', account.faddress, account.seed, account.tag)
             return {
                 address: account.faddress, secret: account.seed, wotsWallet: WOTSWallet.create('test', Buffer.from(account.seed, 'hex'), undefined, (bytes) => {
                     const addrHex = Buffer.from(account.faddress, 'hex')
@@ -40,7 +39,6 @@ export const selectCurrentWOTSKeyPair = createSelector(
             account.wotsIndex,
             account.tag
         );
-        console.log('wots index', account.wotsIndex, account.faddress, account.seed, wotsWallet)
 
         return { address: Buffer.from(address).toString('hex'), secret: Buffer.from(secret).toString('hex'), wotsWallet };
 

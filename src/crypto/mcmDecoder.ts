@@ -103,7 +103,6 @@ export class MCMDecoder {
     public static generateDeterministicSecret(deterministicSeed: Uint8Array, id: number, tag: string): { secret: Uint8Array, address: Uint8Array } {
         const secret = deriveSecret(deterministicSeed, id);
         const tagBytes = Buffer.from(tag, 'hex');
-        console.log('Tag:', tag, 'TagBytes:', tagBytes.length);
         const address = WOTS.generateRandomAddress(tagBytes, secret.secret, (bytes) => {
             if (secret.prng) {
                 const len = bytes.length;
@@ -122,7 +121,6 @@ export class MCMDecoder {
             // Read integrity hash
             const integrityHash = Buffer.from(data.slice(0, 32)).toString('hex');
             fp += 32;
-            console.log('Integrity Hash:', integrityHash);
 
             // Read public header length
             const publicHeaderLength = new DataView(data.buffer).getUint32(fp);
@@ -135,7 +133,6 @@ export class MCMDecoder {
             ) as PublicHeader;
             fp += publicHeaderLength;
 
-            console.log('Public Header:', publicHeader);
 
             // Derive key from password
             const salt = this.parseJavaByteArray(publicHeader['pbkdf2 salt']);
@@ -147,10 +144,6 @@ export class MCMDecoder {
                     hasher: CryptoJS.algo.SHA1
                 }
             );
-
-            console.log('Key derived, salt length:', salt.length);
-            console.log('Key:', key.toString());
-
             // Read private header
             const headerIv = data.slice(fp, fp + 16);
             fp += 16;
@@ -159,13 +152,9 @@ export class MCMDecoder {
             const encryptedHeader = data.slice(fp, fp + headerLength);
             fp += headerLength;
 
-            console.log('Header IV length:', headerIv.length);
-            console.log('Encrypted header length:', encryptedHeader.length);
-
             // Decrypt and parse private header
             const decryptedHeaderBytes = this.decryptData(encryptedHeader, headerIv, key);
-            console.log('Decrypted header bytes:', decryptedHeaderBytes.slice(0, 16));
-
+            
             // Find the end of JSON by looking for }
             let jsonEnd = 0;
             while (jsonEnd < decryptedHeaderBytes.length && decryptedHeaderBytes[jsonEnd] !== 0x7d) { // 0x7d is '}'
@@ -176,7 +165,6 @@ export class MCMDecoder {
             const privateHeader = JSON.parse(
                 new TextDecoder().decode(decryptedHeaderBytes.slice(0, jsonEnd))
             ) as PrivateHeader;
-            console.log('Private Header:', privateHeader);
             // Read entries
             const entries: WOTSEntry[] = [];
             while (fp < data.length) {
