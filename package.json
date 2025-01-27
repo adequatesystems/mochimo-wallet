@@ -1,6 +1,6 @@
 {
   "name": "mochimo-wallet",
-  "version": "1.1.38",
+  "version": "1.1.39",
   "description": "Mochimo HD Wallet Implementation with React Integration",
   "type": "module",
   "main": "./dist/index.js",
