@@ -33,6 +33,17 @@ export const useWallet = () => {
         }
     }, [dispatch]);
 
+    const getMnemonic = useCallback(async (password: string) => {
+        const masterSeed = await StorageProvider.getStorage().loadMasterSeed();
+        if(!masterSeed) return false;
+        try {
+            const ms = await MasterSeed.import(masterSeed, password);
+            return ms.toPhrase()
+        } catch (error) {
+            throw new Error('Invalid password for mnemonic export');
+        }
+    }, [dispatch]);
+
     const lockWallet = useCallback(() => {
         if (!hasWallet) {
             throw new Error('No wallet exists');
@@ -77,6 +88,7 @@ export const useWallet = () => {
         setHasWalletStatus,
         importWalletJSON,
         exportWalletJSON,
-        verifyWalletOwnership
+        verifyWalletOwnership,
+        getMnemonic
     };
 }; 
