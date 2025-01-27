@@ -147,7 +147,7 @@ export const createAccountAction = (name?: string): AppThunk<Account> => async (
 export const exportWalletJSONAction = (password: string): AppThunk<WalletExportedJSON> => async (dispatch, getState) => {
     try {
         const state = getState();
-        
+
         // Add initialization check
         if (!state.wallet.initialized || !state.wallet.hasWallet) {
             throw new Error('Wallet not initialized');
@@ -187,6 +187,16 @@ export const loadWalletJSONAction = (
         const storage = StorageProvider.getStorage();
         const session = SessionManager.getInstance();
 
+        //determine before clearing if the master seed can be decrypted with the password
+        const msEncrypted = walletJSON.encrypted;
+        if (!msEncrypted) {
+            throw new Error('Invalid wallet JSON');
+        }
+
+        const ms = await MasterSeed.import(msEncrypted, password);
+        if (!ms) {
+            throw new Error('Invalid password');
+        }
         // Clear existing storage
         await storage.clear();
 
@@ -199,7 +209,6 @@ export const loadWalletJSONAction = (
         // Save accounts to storage and get highest index
         let highestIndex = -1;
         const storageKey = session.getStorageKey();
-        console.log('storageKey', storageKey, walletJSON.accounts);
         //try to decrypt the accounts using storage key
         const accounts = await Promise.all(
             Object.values(walletJSON.accounts).map(async (account) => {
