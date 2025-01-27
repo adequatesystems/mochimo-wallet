@@ -5,7 +5,7 @@ import { selectWalletStatus, selectWalletError, selectNetwork } from '../selecto
 import { StorageProvider } from '../context/StorageContext';
 import { DecodeResult } from '@/crypto';
 import { setHasWallet } from '../slices/walletSlice';
-import { WalletJSON } from '../types/state';
+import { WalletExportedJSON } from '../types/state';
 import { MasterSeed } from '@/core/MasterSeed';
 
 export const useWallet = () => {
@@ -59,7 +59,7 @@ export const useWallet = () => {
     const exportWalletJSON = useCallback(async (password: string) => {
         return dispatch(exportWalletJSONAction(password));
     }, [dispatch]);
-    const importWalletJSON = useCallback(async (walletJSON: WalletJSON, password: string) => {
+    const importWalletJSON = useCallback(async (walletJSON: WalletExportedJSON, password: string) => {
         return dispatch(loadWalletJSONAction(walletJSON, password));
     }, [dispatch]);     
     return {

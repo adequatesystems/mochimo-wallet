@@ -13,7 +13,8 @@ import {
     setLocked,
 } from '../slices/walletSlice';
 import { AppThunk, RootState } from '../store';
-import { ImportAccountsOptions, ImportOptions, WalletJSON } from '../types/state';
+import { ImportAccountsOptions, ImportOptions, WalletExportedJSON } from '../types/state';
+import { decryptAccount, encryptAccount, EncryptedAccount } from '@/crypto/accountEncryption';
 
 
 
@@ -142,20 +143,31 @@ export const createAccountAction = (name?: string): AppThunk<Account> => async (
 };
 
 // Export wallet
-export const exportWalletJSONAction = (password: string): AppThunk<WalletJSON> => async (dispatch, getState) => {
+export const exportWalletJSONAction = (password: string): AppThunk<WalletExportedJSON> => async (dispatch, getState) => {
     try {
         const state = getState();
+        
+        // Add initialization check
+        if (!state.wallet.initialized || !state.wallet.hasWallet) {
+            throw new Error('Wallet not initialized');
+        }
+
         const session = SessionManager.getInstance();
         const ms = await session.getMasterSeed();
         if (!ms) {
             throw new Error('Wallet is locked');
         }
-        const accounts = state.accounts.accounts;
+        const storageKey = session.getStorageKey();
+        const loadAccounts = await StorageProvider.getStorage().loadAccounts(storageKey);
+        const encryptedAccounts: Record<string, EncryptedAccount> = {};
+        for (const account of (loadAccounts)) {
+            encryptedAccounts[account.tag] = await encryptAccount(account, storageKey);
+        }
         return {
             version: '1.0.0',
             timestamp: Date.now(),
             encrypted: await ms.export(password),
-            accounts: accounts
+            accounts: encryptedAccounts,
         };
     } catch (error) {
         dispatch(setError('Failed to export wallet'));
@@ -166,7 +178,7 @@ export const exportWalletJSONAction = (password: string): AppThunk<WalletJSON> =
 
 
 export const loadWalletJSONAction = (
-    walletJSON: WalletJSON,
+    walletJSON: WalletExportedJSON,
     password: string
 ): AppThunk<void> => async (dispatch) => {
     try {
@@ -185,8 +197,21 @@ export const loadWalletJSONAction = (
         // Save accounts to storage and get highest index
         let highestIndex = -1;
         const storageKey = session.getStorageKey();
-        await Promise.all(
+        console.log('storageKey', storageKey, walletJSON.accounts);
+        //try to decrypt the accounts using storage key
+        const accounts = await Promise.all(
             Object.values(walletJSON.accounts).map(async (account) => {
+                const decrypted = await decryptAccount(account, storageKey);
+                return decrypted;
+            })
+        );
+        const accsState = accounts.reduce((acc, account) => {
+            acc[account.tag] = account;
+            return acc;
+        }, {} as Record<string, Account>);
+
+        await Promise.all(
+            accounts.map(async (account) => {
                 await storage.saveAccount(account, storageKey);
                 if (account.index !== undefined && account.index > highestIndex) {
                     highestIndex = account.index;
@@ -198,7 +223,7 @@ export const loadWalletJSONAction = (
         await storage.saveHighestIndex(highestIndex);
 
         // Update Redux state
-        dispatch(bulkAddAccounts(walletJSON.accounts));
+        dispatch(bulkAddAccounts(accsState));
         dispatch(setHighestIndex(highestIndex));
         dispatch(setHasWallet(true));
         dispatch(setLocked(false));
