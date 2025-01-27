@@ -90,6 +90,7 @@ export const unlockWalletAction = (key: string, type: 'password' | 'seed' | 'jwk
         dispatch(setSelectedAccount(activeAccount));
         dispatch(setLocked(false));
         dispatch(setHasWallet(true));
+        dispatch(setInitialized(true));
         return { jwk: jwk, storageKey: storageKey };
     } catch (error) {
         dispatch(setError('Invalid password'));
@@ -163,6 +164,7 @@ export const exportWalletJSONAction = (password: string): AppThunk<WalletExporte
         for (const account of (loadAccounts)) {
             encryptedAccounts[account.tag] = await encryptAccount(account, storageKey);
         }
+        console.log('encryptedAccounts', encryptedAccounts);
         return {
             version: '1.0.0',
             timestamp: Date.now(),
