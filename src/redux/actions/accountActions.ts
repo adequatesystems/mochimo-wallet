@@ -150,9 +150,12 @@ export const bulkImportMCMAccountsAction = (
                 wotsIndex: account.wotsIndex
             };
 
-            await storage.saveAccount(newAccount, SessionManager.getInstance().getStorageKey());
             accountEntries[id] = newAccount;
         }));
+
+        for(let account of Object.values(accountEntries)) {
+            await storage.saveAccount(account, SessionManager.getInstance().getStorageKey());
+        }
 
         dispatch(bulkAddAccounts(accountEntries));
     } catch (error) {

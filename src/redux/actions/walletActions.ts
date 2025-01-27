@@ -221,15 +221,13 @@ export const loadWalletJSONAction = (
             return acc;
         }, {} as Record<string, Account>);
 
-        await Promise.all(
-            accounts.map(async (account) => {
-                await storage.saveAccount(account, storageKey);
-                if (account.index !== undefined && account.index > highestIndex) {
-                    highestIndex = account.index;
-                }
-            })
-        );
-
+        //save one by one to avoid race condition
+        for(let account of Object.values(accsState)) {
+            await storage.saveAccount(account, storageKey);
+            if (account.index !== undefined && account.index > highestIndex) {
+                highestIndex = account.index;
+            }
+        }
         // Save highest index
         await storage.saveHighestIndex(highestIndex);
 
@@ -383,10 +381,10 @@ export const importAccountsFromMcmAction = createAsyncThunk(
             });
 
             // 6. Save accounts
-            await Promise.all([
-                ...accounts.map(account => storage.saveAccount(account, storageKey)),
-                storage.saveHighestIndex(currentHighestIndex + accounts.length)
-            ]);
+            for(let account of accounts) {
+                await storage.saveAccount(account, storageKey);
+            }
+            await storage.saveHighestIndex(currentHighestIndex + accounts.length);
 
             // 7. Update account state
             dispatch(setHighestIndex(currentHighestIndex + accounts.length));
