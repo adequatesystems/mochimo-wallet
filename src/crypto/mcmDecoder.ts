@@ -25,6 +25,9 @@ export interface DecodeResult {
     privateHeader: PrivateHeader;
     entries: WOTSEntry[];
 }
+export interface GenericDecodeResult {
+    entries: WOTSEntry[];
+}
 
 export class MCMDecoder {
     private static parseJavaByteArray(str: string): Uint8Array {

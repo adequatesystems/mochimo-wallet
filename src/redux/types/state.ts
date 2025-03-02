@@ -1,4 +1,4 @@
-import { DecodeResult, EncryptedAccount, EncryptedData } from '@/crypto';
+import { DecodeResult, EncryptedAccount, EncryptedData, GenericDecodeResult } from '@/crypto';
 import { NetworkType } from '../../types/account';
 import { Account } from '../../types/account';
 
@@ -34,7 +34,7 @@ export interface TransactionState {
     pendingTransactions: string[]; // Array of transaction hashes
 }
 export interface ImportAccountsOptions {
-    mcmData: DecodeResult;
+    mcmData: GenericDecodeResult;
     accountFilter?: (index: number, seed: Uint8Array, name: string) => boolean;
     source: 'mnemonic' | 'mcm' | 'keypair';
 }
