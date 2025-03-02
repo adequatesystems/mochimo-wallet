@@ -3,7 +3,7 @@ import { useAppDispatch, useAppSelector } from './useStore';
 import { createWalletAction, unlockWalletAction, lockWalletAction, importFromMcmFileAction, importAccountsFromMcmAction, exportWalletJSONAction, loadWalletJSONAction } from '../actions/walletActions';
 import { selectWalletStatus, selectWalletError, selectNetwork } from '../selectors/walletSelectors';
 import { StorageProvider } from '../context/StorageContext';
-import { DecodeResult } from '@/crypto';
+import { DecodeResult, GenericDecodeResult } from '@/crypto';
 import { setHasWallet } from '../slices/walletSlice';
 import { WalletExportedJSON } from '../types/state';
 import { MasterSeed } from '@/core/MasterSeed';
@@ -64,7 +64,7 @@ export const useWallet = () => {
         return dispatch(importAccountsFromMcmAction({ mcmData, accountFilter, source: 'mcm' }));
     }, [dispatch]);
 
-    const importAccountsFrom = useCallback(async (source: 'mcm' | 'keypair', mcmData: DecodeResult, accountFilter?: (index: number, seed: Uint8Array, name: string) => boolean) => {
+    const importAccountsFrom = useCallback(async (source: 'mcm' | 'keypair', mcmData: GenericDecodeResult, accountFilter?: (index: number, seed: Uint8Array, name: string) => boolean) => {
         return dispatch(importAccountsFromMcmAction({ mcmData, accountFilter, source }));
     }, [dispatch]);
     
