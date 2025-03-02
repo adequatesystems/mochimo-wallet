@@ -36,7 +36,7 @@ export interface TransactionState {
 export interface ImportAccountsOptions {
     mcmData: DecodeResult;
     accountFilter?: (index: number, seed: Uint8Array, name: string) => boolean;
-    source: 'mnemonic' | 'mcm';
+    source: 'mnemonic' | 'mcm' | 'keypair';
 }
 export interface ImportOptions {
     mcmData: DecodeResult;

@@ -63,6 +63,10 @@ export const useWallet = () => {
     const importAccountsFromMcm = useCallback(async (mcmData: DecodeResult, accountFilter?: (index: number, seed: Uint8Array, name: string) => boolean) => {
         return dispatch(importAccountsFromMcmAction({ mcmData, accountFilter, source: 'mcm' }));
     }, [dispatch]);
+
+    const importAccountsFrom = useCallback(async (source: 'mcm' | 'keypair', mcmData: DecodeResult, accountFilter?: (index: number, seed: Uint8Array, name: string) => boolean) => {
+        return dispatch(importAccountsFromMcmAction({ mcmData, accountFilter, source }));
+    }, [dispatch]);
     
     const setHasWalletStatus = useCallback((hasWallet: boolean) => {
         dispatch(setHasWallet(hasWallet));
@@ -89,6 +93,7 @@ export const useWallet = () => {
         importWalletJSON,
         exportWalletJSON,
         verifyWalletOwnership,
-        getMnemonic
+        getMnemonic,
+        importAccountsFrom
     };
 }; 

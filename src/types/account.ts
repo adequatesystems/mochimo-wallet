@@ -8,7 +8,7 @@ export interface Account {
     balance: string;
     tag: string;
     index?: number;
-    source?: 'mnemonic' | 'mcm';
+    source?: 'mnemonic' | 'mcm' | 'keypair';
     order?: number;
     wotsIndex: number; //starts from -1
     seed: string;
