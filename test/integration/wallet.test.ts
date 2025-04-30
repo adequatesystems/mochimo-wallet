@@ -390,7 +390,7 @@ describe('Wallet Integration', () => {
             const persistedAccounts = Object.values(state.accounts.accounts);
             expect(persistedAccounts).toHaveLength(4);
         });
-        it.only('should create new accounts correctly from other store instances', async () => {
+        it('should create new accounts correctly from other store instances', async () => {
             const store2 = configureStore({
                 reducer: {
                     wallet: walletReducer,
