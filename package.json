@@ -67,11 +67,11 @@
     "blockchain",
     "react"
   ],
-  "author": "Mochimoto",
+  "author": "Anuj Wagle",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/mochimo/wallet.git"
+    "url": "https://github.com/adequatesystems/mochimo-wallet.git"
   },
   "workspaces": [
     "examples/*"
