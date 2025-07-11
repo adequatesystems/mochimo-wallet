@@ -29,56 +29,63 @@ export function WalletLayout({
       // viewMode === 'popup' ? 'w-[360px] h-[600px]' : 'w-screen h-screen'
     )}>
       {/* Fixed Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 shrink-0 bg-card/50">
-        <div className="flex items-center gap-3">
-          {showMenu ? (
-            <Button
-              id="menu-button"
-              variant="ghost"
-              size="icon"
-              onClick={onMenuClick}
-              className={cn(
-                "hover:bg-primary/10",
-                sidebarOpen && "bg-primary/10"
-              )}
-            >
-              <Menu className="h-5 w-5 text-foreground/80" />
-            </Button>
-          ) : (
-            <div className="w-8" />
-          )}
-          <div className="flex items-center gap-2">
-            <Logo 
-              size="sm" 
-              className="text-primary"
-            />
-            <h1 className="text-lg font-semibold font-montserrat text-foreground/90">
-              Mochimo Wallet
-            </h1>
+      <div
+        className="border-b border-border/50 shrink-0 bg-card/50"
+        style={{
+          paddingTop: 'env(safe-area-inset-top)',
+        }}
+      >
+        <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-3">
+            {showMenu ? (
+              <Button
+                id="menu-button"
+                variant="ghost"
+                size="icon"
+                onClick={onMenuClick}
+                className={cn(
+                  "hover:bg-primary/10",
+                  sidebarOpen && "bg-primary/10"
+                )}
+              >
+                <Menu className="h-5 w-5 text-foreground/80" />
+              </Button>
+            ) : (
+              <div className="w-8" />
+            )}
+            <div className="flex items-center gap-2">
+              <Logo 
+                size="sm" 
+                className="text-primary"
+              />
+              <h1 className="text-lg font-semibold font-montserrat text-foreground/90">
+                Mochimo Wallet
+              </h1>
+            </div>
           </div>
-        </div>
-        <div className="flex items-center ">
-          {isExtension && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={toggleViewMode}
-                  className="hover:bg-primary/10"
-                >
-                  {viewMode === 'popup' ? (
-                    <PanelRight className="h-4 w-4 text-foreground/80" />
-                  ) : (
-                    <PanelRightClose className="h-4 w-4 text-foreground/80" />
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{viewMode === 'popup' ? 'Expand to panel' : 'Collapse to popup'}</p>
-              </TooltipContent>
-            </Tooltip>
-          )}
+          <div className="flex items-center ">
+            {isExtension && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={toggleViewMode}
+                    className="hover:bg-primary/10"
+                  >
+                    {viewMode === 'popup' ? (
+                      <PanelRight className="h-4 w-4 text-foreground/80" />
+                    ) : (
+                      <PanelRightClose className="h-4 w-4 text-foreground/80" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{viewMode === 'popup' ? 'Expand to panel' : 'Collapse to popup'}</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </div>
         </div>
       </div>
 

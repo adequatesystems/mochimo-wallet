@@ -132,7 +132,10 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
         className="absolute inset-0 bg-background z-50 h-full w-full overflow-auto"
       >
         {/* Header */}
-        <div className="sticky top-0 z-[51] border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div
+          className="sticky top-0 z-[51] border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
+          style={{ paddingTop: 'env(safe-area-inset-top)' }}
+        >
           <div className="flex h-14 items-center px-4 gap-4">
             <Button
               variant="ghost"
