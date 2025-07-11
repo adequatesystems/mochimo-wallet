@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, HeaderCloseButton } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -89,9 +89,10 @@ export function AddAccountDialog({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={handleClose}>
-        <DialogContent className="max-w-[340px] p-4">
+        <DialogContent className="max-w-[340px] p-4 rounded-lg">
           <DialogHeader>
             <DialogTitle>Add Account</DialogTitle>
+            <HeaderCloseButton circled={false} />
           </DialogHeader>
 
           <AnimatePresence mode="wait">
@@ -302,4 +303,4 @@ export function AddAccountDialog({
       />
     </>
   )
-} 
+}

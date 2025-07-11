@@ -1,6 +1,6 @@
 import { useTheme } from "@/components/theme-provider"
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle, HeaderCloseButton } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { getInitials } from '@/lib/utils/colors'
 import EmojiPicker, { Theme } from 'emoji-picker-react'
@@ -611,32 +611,31 @@ export function ManageAccountsDialog({
       onOpenChange={onClose}
     >
       <DialogContent
-        className="w-full max-w-full  h-[100vh] flex flex-col p-0 gap-0 dialog-content"
+        className="fixed inset-0 w-full h-full max-w-none rounded-none flex flex-col p-0 gap-0 dialog-content bg-background border-none shadow-none"
+        style={{ top: 0, left: 0, transform: 'none', minHeight: '100vh', maxHeight: '100vh' }}
       >
         {/* Dynamic Header */}
-        <div className="flex items-center h-14 border-b p-4">
-          <div className="flex items-center gap-3 flex-1">
-            <div className="w-8">
-              {view === 'detail' && showBack && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => {
-                    setView('list')
-                    setTempAccounts(acc.accounts)
-                    setHasChanges(false)
-                  }}
-                  className="h-8 w-8"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-            <h2 className="text-lg font-semibold flex-1 text-center">
+        <div className="flex items-center justify-between h-14 border-b px-4 py-3 bg-background sticky top-0 z-10">
+          <div className="flex items-center gap-3">
+            {view === 'detail' && showBack && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setView('list')
+                  setTempAccounts(acc.accounts)
+                  setHasChanges(false)
+                }}
+                className="h-8 w-8"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            )}
+            <h2 className="text-xl font-semibold">
               {view === 'list' ? 'Manage Accounts' : 'Account Details'}
             </h2>
-            <div className="w-8" /> {/* Consistent spacer for both views */}
           </div>
+          <HeaderCloseButton circled={false} />
         </div>
 
         {/* Content */}
@@ -808,4 +807,4 @@ export function ManageAccountsDialog({
       </DialogContent>
     </Dialog>
   )
-} 
+}

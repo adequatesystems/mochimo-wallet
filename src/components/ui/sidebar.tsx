@@ -110,13 +110,13 @@ export function Sidebar({
               </div>
 
               {/* Bottom Actions - Vertical */}
-              <div className="p-1.5 border-t flex flex-col items-center gap-1">
+              <div className="p-1.5 border-t flex flex-col gap-2">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8"
+                      className="h-10 w-full max-w-[88px] mx-auto justify-center"
                       onClick={onCreateAccount}
                     >
                       <Plus className="h-4 w-4" />
@@ -132,7 +132,7 @@ export function Sidebar({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8"
+                      className="h-10 w-full max-w-[88px] mx-auto justify-center"
                       onClick={onManageAccounts}
                     >
                       <Edit2 className="h-4 w-4" />
@@ -148,7 +148,7 @@ export function Sidebar({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8"
+                      className="h-10 w-full max-w-[88px] mx-auto justify-center"
                       onClick={onOpenSettings}
                     >
                       <Settings className="h-4 w-4" />
