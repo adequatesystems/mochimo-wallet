@@ -4,7 +4,15 @@
     "skipLibCheck": true,
     "module": "ESNext",
     "moduleResolution": "bundler",
+<<<<<<< HEAD
     "allowSyntheticDefaultImports": true
   },
   "include": ["vite.config.ts"]
 } 
+=======
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true
+  },
+  "include": ["vite.config.ts", "src/config/manifest.ts"]
+}
+>>>>>>> cf851a2 (first)
