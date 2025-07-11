@@ -3,6 +3,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { usePlatform } from "@/lib/utils/usePlatform"
 
 const Dialog = DialogPrimitive.Root
 
@@ -36,7 +37,12 @@ interface DialogContentProps
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   DialogContentProps
->(({ className, children, showClose = true, ...props }, ref) => (
+>(({ className, children, showClose = true, ...props }, ref) => {
+  const { safeAreaInsets, isMobile, isIOS } = usePlatform();
+  // Use at least 44px (iOS standard) or more if device has a notch
+  const safeAreaTopPadding = isMobile ? Math.max(safeAreaInsets.top, 44) : 0;
+  
+  return (
   <DialogPortal>
     <DialogOverlay />
     <DialogPrimitive.Content
@@ -46,8 +52,8 @@ const DialogContent = React.forwardRef<
         className
       )}
       style={{
-        paddingTop: 'env(safe-area-inset-top)',
-        minHeight: 'calc(100vh - env(safe-area-inset-top))',
+        paddingTop: `${safeAreaTopPadding + 24}px`, // Add standard padding (24px) plus safe area
+        minHeight: `calc(100vh - ${safeAreaTopPadding}px)`,
       }}
       {...props}
     >
@@ -60,7 +66,7 @@ const DialogContent = React.forwardRef<
       )}
     </DialogPrimitive.Content>
   </DialogPortal>
-))
+)})
 DialogContent.displayName = DialogPrimitive.Content.displayName
 
 const DialogHeader = ({

@@ -1,4 +1,4 @@
-import { ReactNode } from 'react'
+import { ReactNode, useEffect, useState } from 'react'
 import { Menu, Maximize2, Minimize2, PanelRight, PanelRightClose } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Logo } from '@/components/ui/logo'
@@ -6,6 +6,7 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { useViewMode } from '@/lib/contexts/ViewModeContext'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { usePlatform } from '@/lib/utils/usePlatform'
 
 interface WalletLayoutProps {
   children: ReactNode
@@ -21,6 +22,11 @@ export function WalletLayout({
   sidebarOpen = false
 }: WalletLayoutProps) {
   const { viewMode, toggleViewMode, isExtension } = useViewMode()
+  const { platform, safeAreaInsets, isMobile, isIOS } = usePlatform()
+  const [headerHeight, setHeaderHeight] = useState(56) // Default height (12px top + 12px bottom + 32px content)
+  
+  // Calculate dynamic safe area padding based on device
+  const safeAreaTopPadding = isMobile ? Math.max(safeAreaInsets.top, 44) : 0
   
   return (
     <div className={cn(
@@ -32,7 +38,8 @@ export function WalletLayout({
       <div
         className="border-b border-border/50 shrink-0 bg-card/50"
         style={{
-          paddingTop: 'env(safe-area-inset-top)',
+          paddingTop: `${safeAreaTopPadding}px`,
+          minHeight: `${headerHeight + safeAreaTopPadding}px`
         }}
       >
         <div className="flex items-center justify-between px-4 py-3">
