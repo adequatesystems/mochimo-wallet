@@ -17,6 +17,7 @@ interface Transaction {
   address: string
   txid?: string
   blockNumber?: number
+  pending?: boolean
 }
 
 interface RecentActivityProps {
@@ -45,144 +46,195 @@ export function RecentActivity({ account, onRefresh }: RecentActivityProps) {
   }
 
   // Fetch account transactions and parse them into our Transaction type
-  const fetchTransactions = async () => {
+
+
+  // Ottimizzato: carica solo nuovi blocchi/transazioni
+
+  const fetchTransactions = async (onlyNew = false) => {
     try {
       setLoadingTransactions(true)
       logger.info('Fetching transactions for account:', account.tag)
       const network = NetworkProvider.getNetwork()
+      const currentAddress = "0x" + account.tag;
 
-      // Usa l'indirizzo dell'account corrente
-      //const currentAddress = "0x" + account.tag;
-        const currentAddress = "0xbc3d128f41aa7a4097b7c0176999adb104758b0b";
-      if (typeof network.searchTransactionsByAddress !== 'function') {
-        logger.error('searchTransactionsByAddress is not a function on the current network provider. Assicurati che MeshNetworkService sia usato come provider di rete.')
+      if (typeof network.searchTransactionsByAddress !== 'function' || typeof network.getBlock !== 'function' || typeof network.getMempoolTransactions !== 'function') {
+        logger.error('searchTransactionsByAddress, getBlock, or getMempoolTransactions is not a function on the current network provider. Assicurati che MeshNetworkService sia usato come provider di rete.')
         setLoadingTransactions(false)
         return
       }
-      
-      const txResult = await network.searchTransactionsByAddress(currentAddress, { limit: 20 })
+
+      // Trova il blockNumber massimo già presente
+      let maxBlock = 0
+      if (onlyNew && transactions.length > 0) {
+        maxBlock = Math.max(...transactions.map(t => t.blockNumber || 0))
+      }
+
+      // Chiedi solo transazioni con blockNumber > maxBlock se onlyNew
+      const txResult = await network.searchTransactionsByAddress(currentAddress, onlyNew ? { limit: 20, min_block: maxBlock + 1 } : { limit: 20 })
       if (!txResult || !Array.isArray(txResult.transactions)) {
         logger.error('Invalid transaction data format', txResult)
         setLoadingTransactions(false)
         return
       }
-      
-      const processedTransactions: Transaction[] = []
-      
-      // Raggruppa le operazioni per blocco per aggregare i mining rewards
-      const blockRewards: Record<string, { rewards: bigint, timestamp: number, blockNumber: number }> = {}
-      
+
+      const feeByBlock: Record<string, { fee: bigint, timestamp: number, blockNumber: number }> = {}
+      const sendReceiveTxs: Transaction[] = []
+
       for (const tx of txResult.transactions) {
-        // Verifica che abbiamo le informazioni necessarie
         if (!tx.transaction_identifier?.hash || !tx.operations || !tx.block_identifier?.index) {
           logger.warn('Skipping transaction with incomplete data', tx)
           continue
         }
-        
         const blockId = tx.block_identifier?.index.toString()
+        const blockNumber = tx.block_identifier?.index
         const timestamp = tx.timestamp || Date.now()
-        
-        // SEND: tutte le operazioni dove l'utente è sender
+
+        // Se il blocco è già presente, salta (solo se onlyNew)
+        if (onlyNew && blockNumber <= maxBlock) continue
+
+        // SEND
         const sendOps = tx.operations.filter((op: any) =>
           (op.type === 'SOURCE_TRANSFER') &&
           op.account?.address?.toLowerCase() === currentAddress.toLowerCase()
         )
-        
         for (const sendOp of sendOps) {
-          // Trova tutte le destinazioni per questa transazione
           const destOps = tx.operations.filter((op: any) => op.type === 'DESTINATION_TRANSFER')
           for (const destOp of destOps) {
-            processedTransactions.push({
+            sendReceiveTxs.push({
               type: 'send',
               amount: destOp.amount?.value || '0',
               timestamp: timestamp,
               address: destOp.account?.address,
               txid: tx.transaction_identifier?.hash,
-              blockNumber: tx.block_identifier?.index
+              blockNumber: blockNumber
             })
           }
         }
 
-        // RECEIVE: tutte le operazioni dove l'utente è receiver
+        // RECEIVE
         const recvOps = tx.operations.filter((op: any) =>
           (op.type === 'DESTINATION_TRANSFER') &&
           op.account?.address?.toLowerCase() === currentAddress.toLowerCase()
         )
-        
         for (const recvOp of recvOps) {
           const sourceOp = tx.operations.find((op: any) => op.type === 'SOURCE_TRANSFER')
-          processedTransactions.push({
+          sendReceiveTxs.push({
             type: 'receive',
             amount: recvOp.amount?.value || '0',
             timestamp: timestamp,
             address: sourceOp ? sourceOp.account?.address : 'Unknown',
             txid: tx.transaction_identifier?.hash,
-            blockNumber: tx.block_identifier?.index
+            blockNumber: blockNumber
           })
         }
 
-        // Raccoglie sia FEE che REWARD per blocco
-        // FEE operations - commissioni di transazioni
+        // FEE
         const feeOps = tx.operations.filter((op: any) =>
           op.type === 'FEE' &&
           op.account?.address?.toLowerCase() === currentAddress.toLowerCase()
         )
-        
         for (const feeOp of feeOps) {
           try {
             const value = feeOp.amount?.value || '0'
-            const blockNumber = tx.block_identifier?.index
-            
-            // Aggiungi al totale per questo blocco
-            if (!blockRewards[blockId]) {
-              blockRewards[blockId] = { rewards: BigInt(0), timestamp, blockNumber }
+            if (!feeByBlock[blockId]) {
+              feeByBlock[blockId] = { fee: BigInt(0), timestamp, blockNumber }
             }
-            
-            blockRewards[blockId].rewards += BigInt(value)
+            feeByBlock[blockId].fee += BigInt(value)
           } catch (error) {
             logger.error('Error processing fee operation:', error)
           }
         }
-        
-        // REWARD operations - premi di mining del blocco
-        const rewardOps = tx.operations.filter((op: any) =>
-          op.type === 'REWARD' &&
-          op.account?.address?.toLowerCase() === currentAddress.toLowerCase()
-        )
-        
-        for (const rewardOp of rewardOps) {
-          try {
-            const value = rewardOp.amount?.value || '0'
-            const blockNumber = tx.block_identifier?.index
-            
-            // Aggiungi al totale per questo blocco
-            if (!blockRewards[blockId]) {
-              blockRewards[blockId] = { rewards: BigInt(0), timestamp, blockNumber }
+      }
+
+      // Per ogni nuovo blocco con FEE, carica il block e somma FEE+REWARD
+      const miningTxs: Transaction[] = []
+      for (const [blockId, data] of Object.entries(feeByBlock)) {
+        try {
+          const blockRes = await network.getBlock({ index: data.blockNumber })
+          const block = blockRes?.block
+          if (!block || !Array.isArray(block.transactions)) continue
+          let reward = BigInt(0)
+          for (const btx of block.transactions) {
+            if (!Array.isArray(btx.operations)) continue
+            for (const op of btx.operations) {
+              if (op.type === 'REWARD' && op.account?.address?.toLowerCase() === currentAddress.toLowerCase()) {
+                reward += BigInt(op.amount?.value || '0')
+              }
             }
-            
-            blockRewards[blockId].rewards += BigInt(value)
-          } catch (error) {
-            logger.error('Error processing reward operation:', error)
+          }
+          const total = data.fee + reward
+          if (total > BigInt(0)) {
+            miningTxs.push({
+              type: 'mining',
+              amount: total.toString(),
+              timestamp: data.timestamp,
+              address: 'Mining Reward',
+              txid: blockId,
+              blockNumber: data.blockNumber
+            })
+          }
+        } catch (error) {
+          logger.error('Error fetching block or processing reward:', error)
+        }
+      }
+
+      // --- MEMPOOL ---
+      const mempoolTxs: Transaction[] = []
+      try {
+        const mempoolRes = await network.getMempoolTransactions()
+        if (mempoolRes && Array.isArray(mempoolRes.transactions)) {
+          for (const tx of mempoolRes.transactions) {
+            if (!tx.transaction_identifier?.hash || !tx.operations) continue
+            const timestamp = tx.timestamp || Date.now()
+            // Outgoing
+            const sendOps = tx.operations.filter((op: any) =>
+              (op.type === 'SOURCE_TRANSFER') &&
+              op.account?.address?.toLowerCase() === currentAddress.toLowerCase()
+            )
+            for (const sendOp of sendOps) {
+              const destOps = tx.operations.filter((op: any) => op.type === 'DESTINATION_TRANSFER')
+              for (const destOp of destOps) {
+                mempoolTxs.push({
+                  type: 'send',
+                  amount: destOp.amount?.value || '0',
+                  timestamp,
+                  address: destOp.account?.address,
+                  txid: tx.transaction_identifier?.hash,
+                  pending: true
+                })
+              }
+            }
+            // Incoming
+            const recvOps = tx.operations.filter((op: any) =>
+              (op.type === 'DESTINATION_TRANSFER') &&
+              op.account?.address?.toLowerCase() === currentAddress.toLowerCase()
+            )
+            for (const recvOp of recvOps) {
+              const sourceOp = tx.operations.find((op: any) => op.type === 'SOURCE_TRANSFER')
+              mempoolTxs.push({
+                type: 'receive',
+                amount: recvOp.amount?.value || '0',
+                timestamp,
+                address: sourceOp ? sourceOp.account?.address : 'Unknown',
+                txid: tx.transaction_identifier?.hash,
+                pending: true
+              })
+            }
           }
         }
+      } catch (error) {
+        logger.error('Error fetching mempool transactions:', error)
       }
-      
-      // Aggiungi le ricompense di mining aggregate ai risultati
-      for (const [blockId, data] of Object.entries(blockRewards)) {
-        if (data.rewards > BigInt(0)) {
-          processedTransactions.push({
-            type: 'mining',
-            amount: data.rewards.toString(),
-            timestamp: data.timestamp,
-            address: 'Mining Reward',
-            txid: blockId, // Usa il blockId come txid per questi aggregati
-            blockNumber: data.blockNumber
-          })
-        }
+
+      // Aggiorna solo con i nuovi
+      let allTxs: Transaction[] = []
+      if (onlyNew) {
+        allTxs = [...transactions, ...sendReceiveTxs, ...miningTxs, ...mempoolTxs]
+      } else {
+        allTxs = [...sendReceiveTxs, ...miningTxs, ...mempoolTxs]
       }
-      
-      processedTransactions.sort((a, b) => b.timestamp - a.timestamp)
-      setTransactions(processedTransactions)
+      allTxs.sort((a, b) => b.timestamp - a.timestamp)
+      setTransactions(allTxs)
     } catch (error) {
       logger.error('Error fetching transactions:', error)
     } finally {
@@ -199,7 +251,7 @@ export function RecentActivity({ account, onRefresh }: RecentActivityProps) {
 
   // Handle refresh button
   const handleRefresh = () => {
-    fetchTransactions()
+    fetchTransactions(true)
     if (onRefresh) onRefresh()
   }
 
@@ -250,19 +302,20 @@ export function RecentActivity({ account, onRefresh }: RecentActivityProps) {
             <div key={tx.txid || index} className="p-4 hover:bg-muted/20 transition-colors">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={cn(
-                    "p-2 rounded-full shrink-0",
-                    tx.type === 'send' ? "bg-red-500/10" : 
-                    tx.type === 'receive' ? "bg-green-500/10" : "bg-blue-500/10"
-                  )}>
-                    {tx.type === 'send' ? (
-                      <Send className="h-3.5 w-3.5 text-red-500" />
-                    ) : tx.type === 'receive' ? (
-                      <Coins className="h-3.5 w-3.5 text-green-500" />
-                    ) : (
-                      <TagIcon className="h-3.5 w-3.5 text-blue-500" />
-                    )}
-                  </div>
+          <div className={cn(
+            "p-2 rounded-full shrink-0",
+            tx.type === 'send' ? "bg-red-500/10" : 
+            tx.type === 'receive' ? "bg-green-500/10" : "bg-blue-500/10",
+            tx.pending ? "border-2 border-yellow-400" : ""
+          )}>
+            {tx.type === 'send' ? (
+              <Send className={cn("h-3.5 w-3.5", tx.pending ? "text-yellow-500" : "text-red-500")} />
+            ) : tx.type === 'receive' ? (
+              <Coins className={cn("h-3.5 w-3.5", tx.pending ? "text-yellow-500" : "text-green-500")} />
+            ) : (
+              <TagIcon className="h-3.5 w-3.5 text-blue-500" />
+            )}
+          </div>
                   <div>
                     <p className="text-sm font-medium">
                       {tx.type === 'send' ? 'Sent to ' : 
@@ -271,6 +324,9 @@ export function RecentActivity({ account, onRefresh }: RecentActivityProps) {
                         <span className="font-mono text-xs text-muted-foreground">
                           {tx.address.substring(0, 6)}...{tx.address.substring(tx.address.length - 4)}
                         </span>
+                      )}
+                      {tx.pending && (
+                        <span className="ml-2 text-xs text-yellow-500 font-semibold">(pending)</span>
                       )}
                     </p>
                     <p className="text-xs text-muted-foreground">
@@ -281,7 +337,7 @@ export function RecentActivity({ account, onRefresh }: RecentActivityProps) {
                 <div className="text-right">
                   <p className={cn(
                     "font-mono font-medium",
-                    tx.type === 'send' ? "text-red-500" : "text-green-500"
+                    tx.type === 'send' ? (tx.pending ? "text-yellow-500" : "text-red-500") : (tx.pending ? "text-yellow-500" : "text-green-500")
                   )}>
                     {tx.type === 'send' ? '-' : '+'}{formatBalance(tx.amount)} MCM
                   </p>
