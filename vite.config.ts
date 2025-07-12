@@ -134,9 +134,7 @@ export default defineConfig(({ mode }) => {
     },
     plugins,
     build: buildConfig,
-    preview: {
-      outDir: 'dist/web'
-    }
+    preview: {}
   };
 });
 >>>>>>> cf851a2 (first)

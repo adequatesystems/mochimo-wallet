@@ -18,6 +18,7 @@ interface Transaction {
   txid?: string
   blockNumber?: number
   pending?: boolean
+  fee?: string // solo per send
 }
 
 interface RecentActivityProps {
@@ -66,177 +67,248 @@ export function RecentActivity({ account, onRefresh }: RecentActivityProps) {
       // Trova il blockNumber massimo già presente
       let maxBlock = 0
       if (onlyNew && transactions.length > 0) {
-        maxBlock = Math.max(...transactions.map(t => t.blockNumber || 0))
+        maxBlock = Math.max(...transactions.map(t => t.blockNumber || 0).filter(b => b > 0))
       }
 
-      // Chiedi solo transazioni con blockNumber > maxBlock se onlyNew
-      const txResult = await network.searchTransactionsByAddress(currentAddress, onlyNew ? { limit: 20, min_block: maxBlock + 1 } : { limit: 20 })
-      if (!txResult || !Array.isArray(txResult.transactions)) {
-        logger.error('Invalid transaction data format', txResult)
-        setLoadingTransactions(false)
-        return
-      }
-
-      const feeByBlock: Record<string, { fee: bigint, timestamp: number, blockNumber: number }> = {}
-      const sendReceiveTxs: Transaction[] = []
-
-      for (const tx of txResult.transactions) {
-        if (!tx.transaction_identifier?.hash || !tx.operations || !tx.block_identifier?.index) {
-          logger.warn('Skipping transaction with incomplete data', tx)
-          continue
-        }
-        const blockId = tx.block_identifier?.index.toString()
-        const blockNumber = tx.block_identifier?.index
-        const timestamp = tx.timestamp || Date.now()
-
-        // Se il blocco è già presente, salta (solo se onlyNew)
-        if (onlyNew && blockNumber <= maxBlock) continue
-
-        // SEND
-        const sendOps = tx.operations.filter((op: any) =>
-          (op.type === 'SOURCE_TRANSFER') &&
-          op.account?.address?.toLowerCase() === currentAddress.toLowerCase()
-        )
-        for (const sendOp of sendOps) {
-          const destOps = tx.operations.filter((op: any) => op.type === 'DESTINATION_TRANSFER')
-          for (const destOp of destOps) {
-            sendReceiveTxs.push({
-              type: 'send',
-              amount: destOp.amount?.value || '0',
-              timestamp: timestamp,
-              address: destOp.account?.address,
-              txid: tx.transaction_identifier?.hash,
-              blockNumber: blockNumber
-            })
-          }
-        }
-
-        // RECEIVE
-        const recvOps = tx.operations.filter((op: any) =>
-          (op.type === 'DESTINATION_TRANSFER') &&
-          op.account?.address?.toLowerCase() === currentAddress.toLowerCase()
-        )
-        for (const recvOp of recvOps) {
-          const sourceOp = tx.operations.find((op: any) => op.type === 'SOURCE_TRANSFER')
-          sendReceiveTxs.push({
-            type: 'receive',
-            amount: recvOp.amount?.value || '0',
-            timestamp: timestamp,
-            address: sourceOp ? sourceOp.account?.address : 'Unknown',
-            txid: tx.transaction_identifier?.hash,
-            blockNumber: blockNumber
-          })
-        }
-
-        // FEE
-        const feeOps = tx.operations.filter((op: any) =>
-          op.type === 'FEE' &&
-          op.account?.address?.toLowerCase() === currentAddress.toLowerCase()
-        )
-        for (const feeOp of feeOps) {
-          try {
-            const value = feeOp.amount?.value || '0'
-            if (!feeByBlock[blockId]) {
-              feeByBlock[blockId] = { fee: BigInt(0), timestamp, blockNumber }
-            }
-            feeByBlock[blockId].fee += BigInt(value)
-          } catch (error) {
-            logger.error('Error processing fee operation:', error)
-          }
-        }
-      }
-
-      // Per ogni nuovo blocco con FEE, carica il block e somma FEE+REWARD
-      const miningTxs: Transaction[] = []
-      for (const [blockId, data] of Object.entries(feeByBlock)) {
+      // Array per i diversi tipi di transazioni
+      let sendReceiveTxs: Transaction[] = []
+      let miningTxs: Transaction[] = []
+      let mempoolTxs: Transaction[] = []
+      let feeByBlock: Record<string, { fee: bigint, timestamp: number, blockNumber: number }> = {}
+      let confirmedError = false
+      
+      // --- STEP 1: FETCH CONFIRMED TRANSACTIONS ---
+      await fetchConfirmedTransactions()
+      
+      // --- STEP 2: FETCH MEMPOOL TRANSACTIONS ---
+      // Sempre eseguito, anche se fetchConfirmedTransactions fallisce
+      await fetchMempool()
+      
+      // --- STEP 3: UPDATE STATE ---
+      updateTransactionState()
+      
+      // ------------- FUNZIONI INTERNE -------------
+      
+      // Funzione per recuperare le transazioni confermate
+      async function fetchConfirmedTransactions() {
         try {
-          const blockRes = await network.getBlock({ index: data.blockNumber })
-          const block = blockRes?.block
-          if (!block || !Array.isArray(block.transactions)) continue
-          let reward = BigInt(0)
-          for (const btx of block.transactions) {
-            if (!Array.isArray(btx.operations)) continue
-            for (const op of btx.operations) {
-              if (op.type === 'REWARD' && op.account?.address?.toLowerCase() === currentAddress.toLowerCase()) {
-                reward += BigInt(op.amount?.value || '0')
-              }
+          logger.info(`Fetching confirmed transactions for ${currentAddress}, onlyNew=${onlyNew}, maxBlock=${maxBlock}`)
+          const txResult = await network.searchTransactionsByAddress(currentAddress, { limit: 20 })
+          if (!txResult || !Array.isArray(txResult.transactions)) {
+            logger.error('Invalid transaction data format', txResult)
+            confirmedError = true
+            return
+          }
+          
+          logger.info(`Found ${txResult.transactions.length} confirmed transactions`)
+          for (const tx of txResult.transactions) {
+            if (!tx.transaction_identifier?.hash || !tx.operations || !tx.block_identifier?.index) {
+              logger.warn('Skipping transaction with incomplete data', tx)
+              continue
             }
-          }
-          const total = data.fee + reward
-          if (total > BigInt(0)) {
-            miningTxs.push({
-              type: 'mining',
-              amount: total.toString(),
-              timestamp: data.timestamp,
-              address: 'Mining Reward',
-              txid: blockId,
-              blockNumber: data.blockNumber
-            })
-          }
-        } catch (error) {
-          logger.error('Error fetching block or processing reward:', error)
-        }
-      }
-
-      // --- MEMPOOL ---
-      const mempoolTxs: Transaction[] = []
-      try {
-        const mempoolRes = await network.getMempoolTransactions()
-        if (mempoolRes && Array.isArray(mempoolRes.transactions)) {
-          for (const tx of mempoolRes.transactions) {
-            if (!tx.transaction_identifier?.hash || !tx.operations) continue
+            const blockId = tx.block_identifier?.index.toString()
+            const blockNumber = tx.block_identifier?.index
             const timestamp = tx.timestamp || Date.now()
-            // Outgoing
+
+            // Se il blocco è già presente, salta (solo se onlyNew)
+            if (onlyNew && blockNumber <= maxBlock) continue
+
+            // Prendi la fee totale dalla metadata
+            let feeTotal = BigInt(0)
+            if (tx.metadata && tx.metadata.fee_total) {
+              feeTotal = BigInt(tx.metadata.fee_total)
+            }
+
+            // SEND: mostra solo i destinatari validi (no change)
             const sendOps = tx.operations.filter((op: any) =>
               (op.type === 'SOURCE_TRANSFER') &&
               op.account?.address?.toLowerCase() === currentAddress.toLowerCase()
             )
             for (const sendOp of sendOps) {
-              const destOps = tx.operations.filter((op: any) => op.type === 'DESTINATION_TRANSFER')
+              // Destinatari validi: DESTINATION_TRANSFER dove l'indirizzo NON è uguale al sender
+              const senderAddress = sendOp.account?.address?.toLowerCase()
+              const destOps = tx.operations.filter((op: any) =>
+                op.type === 'DESTINATION_TRANSFER' &&
+                op.account?.address?.toLowerCase() !== senderAddress
+              )
+              // Fee per destinatario
+              const feePerDest = destOps.length > 0 ? (feeTotal / BigInt(destOps.length)) : BigInt(0)
               for (const destOp of destOps) {
-                mempoolTxs.push({
+                sendReceiveTxs.push({
                   type: 'send',
                   amount: destOp.amount?.value || '0',
-                  timestamp,
+                  timestamp: timestamp,
                   address: destOp.account?.address,
                   txid: tx.transaction_identifier?.hash,
-                  pending: true
+                  blockNumber: blockNumber,
+                  pending: false,
+                  fee: feePerDest.toString()
                 })
               }
             }
-            // Incoming
+
+            // RECEIVE
             const recvOps = tx.operations.filter((op: any) =>
               (op.type === 'DESTINATION_TRANSFER') &&
               op.account?.address?.toLowerCase() === currentAddress.toLowerCase()
             )
             for (const recvOp of recvOps) {
               const sourceOp = tx.operations.find((op: any) => op.type === 'SOURCE_TRANSFER')
-              mempoolTxs.push({
-                type: 'receive',
-                amount: recvOp.amount?.value || '0',
-                timestamp,
-                address: sourceOp ? sourceOp.account?.address : 'Unknown',
-                txid: tx.transaction_identifier?.hash,
-                pending: true
-              })
+              // Mostra solo se il sender è diverso dal destinatario
+              if (sourceOp && sourceOp.account?.address?.toLowerCase() !== currentAddress.toLowerCase()) {
+                sendReceiveTxs.push({
+                  type: 'receive',
+                  amount: recvOp.amount?.value || '0',
+                  timestamp: timestamp,
+                  address: sourceOp ? sourceOp.account?.address : 'Unknown',
+                  txid: tx.transaction_identifier?.hash,
+                  blockNumber: blockNumber
+                })
+              }
             }
           }
+          
+          // Per ogni nuovo blocco con FEE, carica il block e somma FEE+REWARD
+          for (const [blockId, data] of Object.entries(feeByBlock)) {
+            try {
+              const blockRes = await network.getBlock({ index: data.blockNumber })
+              const block = blockRes?.block
+              if (!block || !Array.isArray(block.transactions)) continue
+              let reward = BigInt(0)
+              for (const btx of block.transactions) {
+                if (!Array.isArray(btx.operations)) continue
+                for (const op of btx.operations) {
+                  if (op.type === 'REWARD' && op.account?.address?.toLowerCase() === currentAddress.toLowerCase()) {
+                    reward += BigInt(op.amount?.value || '0')
+                  }
+                }
+              }
+              const total = data.fee + reward
+              if (total > BigInt(0)) {
+                miningTxs.push({
+                  type: 'mining',
+                  amount: total.toString(),
+                  timestamp: data.timestamp,
+                  address: 'Mining Reward',
+                  txid: blockId,
+                  blockNumber: data.blockNumber
+                })
+              }
+            } catch (error) {
+              logger.error('Error fetching block or processing reward:', error)
+            }
+          }
+        } catch (error) {
+          logger.error('Error fetching confirmed transactions:', error)
+          confirmedError = true
         }
-      } catch (error) {
-        logger.error('Error fetching mempool transactions:', error)
       }
-
-      // Aggiorna solo con i nuovi
-      let allTxs: Transaction[] = []
-      if (onlyNew) {
-        allTxs = [...transactions, ...sendReceiveTxs, ...miningTxs, ...mempoolTxs]
-      } else {
-        allTxs = [...sendReceiveTxs, ...miningTxs, ...mempoolTxs]
+      
+      // Funzione per recuperare le transazioni in mempool
+      async function fetchMempool() {
+        try {
+          logger.info('Checking mempool for address:', currentAddress)
+          const mempoolRes = await network.getMempoolTransactions()
+          logger.info(`Mempool response contains ${mempoolRes?.transactions?.length || 0} transactions`)
+          
+          if (mempoolRes && Array.isArray(mempoolRes.transactions)) {
+            for (const tx of mempoolRes.transactions) {
+              if (!tx.transaction_identifier?.hash || !tx.operations) continue
+              const timestamp = tx.timestamp || Date.now()
+              const txid = tx.transaction_identifier?.hash
+              
+              // Verifica se questa tx ha operazioni rilevanti per questo indirizzo
+              const hasRelevantOps = tx.operations.some(op => 
+                op.account?.address?.toLowerCase() === currentAddress.toLowerCase()
+              )
+              
+              if (!hasRelevantOps) continue
+              
+              logger.info(`Found mempool tx ${txid} relevant to ${currentAddress}`)
+              
+              // Outgoing: QUANDO SIAMO NOI IL SOURCE_TRANSFER
+              const sendOps = tx.operations.filter((op: any) =>
+                (op.type === 'SOURCE_TRANSFER') &&
+                op.account?.address?.toLowerCase() === currentAddress.toLowerCase()
+              )
+              
+              for (const sendOp of sendOps) {
+                // Filtra per mostrare solo le destinazioni che non sono noi stessi (no change)
+                const destOps = tx.operations.filter((op: any) => 
+                  op.type === 'DESTINATION_TRANSFER' &&
+                  op.account?.address?.toLowerCase() !== currentAddress.toLowerCase()
+                )
+                
+                for (const destOp of destOps) {
+                  // Aggiungi ogni destinazione come send
+                  mempoolTxs.push({
+                    type: 'send',
+                    amount: destOp.amount?.value || '0',
+                    timestamp,
+                    address: destOp.account?.address,
+                    txid: tx.transaction_identifier?.hash,
+                    pending: true
+                  })
+                }
+              }
+              
+              // Incoming: QUANDO SIAMO NOI IL DESTINATION_TRANSFER
+              const recvOps = tx.operations.filter((op: any) =>
+                (op.type === 'DESTINATION_TRANSFER') &&
+                op.account?.address?.toLowerCase() === currentAddress.toLowerCase()
+              )
+              
+              for (const recvOp of recvOps) {
+                const sourceOp = tx.operations.find((op: any) => op.type === 'SOURCE_TRANSFER')
+                if (sourceOp && sourceOp.account?.address?.toLowerCase() !== currentAddress.toLowerCase()) {
+                  // Aggiungi come receive solo se non è una transazione da noi a noi
+                  mempoolTxs.push({
+                    type: 'receive',
+                    amount: recvOp.amount?.value || '0',
+                    timestamp,
+                    address: sourceOp ? sourceOp.account?.address : 'Unknown',
+                    txid: tx.transaction_identifier?.hash,
+                    pending: true
+                  })
+                }
+              }
+            }
+          }
+          logger.info(`Found ${mempoolTxs.length} pending transactions in mempool for address ${currentAddress}`)
+        } catch (error) {
+          logger.error('Error fetching mempool transactions:', error)
+        }
       }
-      allTxs.sort((a, b) => b.timestamp - a.timestamp)
-      setTransactions(allTxs)
+      
+      // Funzione per aggiornare lo stato delle transazioni
+      function updateTransactionState() {
+        let allTxs: Transaction[] = []
+        
+        if (onlyNew) {
+          // Filtra le transazioni esistenti per rimuovere quelle in mempool (che potrebbero essere state confermate)
+          const existingConfirmedTxs = transactions.filter(t => !t.pending)
+          allTxs = [...existingConfirmedTxs, ...sendReceiveTxs, ...miningTxs, ...mempoolTxs]
+        } else {
+          allTxs = [...sendReceiveTxs, ...miningTxs, ...mempoolTxs]
+        }
+        
+        // Se ci sono errori con le transazioni confermate ma abbiamo transazioni nella mempool,
+        // mostra comunque quelle della mempool
+        if (confirmedError && sendReceiveTxs.length === 0 && miningTxs.length === 0) {
+          logger.info(`Using only mempool transactions due to error with confirmed transactions`)
+          // Non sovrascrivere se ci sono transazioni valide
+          if (allTxs.length === 0 || (allTxs.every(t => t.pending))) {
+            allTxs = [...mempoolTxs]
+          }
+        }
+        
+        // Ordina per timestamp (più recente prima)
+        allTxs.sort((a, b) => b.timestamp - a.timestamp)
+        logger.info(`Total transactions after update: ${allTxs.length} (${allTxs.filter(t => t.pending).length} pending)`)
+        setTransactions(allTxs)
+      }
     } catch (error) {
-      logger.error('Error fetching transactions:', error)
+      logger.error('Error in fetchTransactions:', error)
     } finally {
       setLoadingTransactions(false)
     }
@@ -340,6 +412,9 @@ export function RecentActivity({ account, onRefresh }: RecentActivityProps) {
                     tx.type === 'send' ? (tx.pending ? "text-yellow-500" : "text-red-500") : (tx.pending ? "text-yellow-500" : "text-green-500")
                   )}>
                     {tx.type === 'send' ? '-' : '+'}{formatBalance(tx.amount)} MCM
+                    {tx.type === 'send' && tx.fee && (
+                      <span className="ml-1 text-xs text-muted-foreground">(fee: {formatBalance(tx.fee)})</span>
+                    )}
                   </p>
                   {tx.blockNumber && (
                     <p className="text-xs text-muted-foreground">

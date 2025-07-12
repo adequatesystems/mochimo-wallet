@@ -168,7 +168,7 @@ export function SettingsDialog({ isOpen, onClose }: SettingsDialogProps) {
 
   const handleApiChange = (url: string) => {
     setCustomEndpoint(url)
-    setSelectedEndpoint(ENDPOINTS.find(ep => ep.url === url) ?? null)
+    setSelectedEndpoint(ENDPOINTS.find(ep => ep.url === url)?.url ?? '')
   }
 
   const handleSaveEndpoint = () => {
