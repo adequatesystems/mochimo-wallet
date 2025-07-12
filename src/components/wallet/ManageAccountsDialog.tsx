@@ -32,6 +32,7 @@ import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, A
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { log } from "@/lib/utils/logging"
+import { usePlatform } from "@/lib/utils/usePlatform"
 const logger = log.getLogger("wallet-modal");
 
 interface ManageAccountsDialogProps {
@@ -526,6 +527,8 @@ export function ManageAccountsDialog({
   const [hasChanges, setHasChanges] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const acc = useAccounts()
+  const { safeAreaInsets, isMobile } = usePlatform();
+  const safeAreaTopPadding = isMobile ? Math.max(safeAreaInsets.top, 44) + 16 : 16;
 
   // Reset state when dialog opens/closes
   useEffect(() => {
@@ -615,7 +618,10 @@ export function ManageAccountsDialog({
         style={{ top: 0, left: 0, transform: 'none', minHeight: '100vh', maxHeight: '100vh' }}
       >
         {/* Dynamic Header */}
-        <div className="flex items-center justify-between h-14 border-b px-4 py-3 bg-background sticky top-0 z-10">
+        <div
+          className="flex items-center justify-between px-4 bg-background sticky top-0 z-10 border-b"
+          style={{ paddingTop: safeAreaTopPadding, paddingBottom: 16 }}
+        >
           <div className="flex items-center gap-3">
             {view === 'detail' && showBack && (
               <Button
@@ -635,7 +641,7 @@ export function ManageAccountsDialog({
               {view === 'list' ? 'Manage Accounts' : 'Account Details'}
             </h2>
           </div>
-          <HeaderCloseButton circled={false} />
+          <HeaderCloseButton />
         </div>
 
         {/* Content */}

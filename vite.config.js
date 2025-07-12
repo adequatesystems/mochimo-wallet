@@ -76,7 +76,8 @@ export default defineConfig(function (_a) {
                 manualChunks: {
                     vendor: ['react', 'react-dom']
                 }
-            }
+            },
+            chunkSizeWarningLimit: 1500
         }
         : isWeb
             ? {
@@ -84,7 +85,17 @@ export default defineConfig(function (_a) {
                 define: {
                     'process.env': {},
                     'global': {},
-                }
+                },
+                rollupOptions: {
+                    output: {
+                        manualChunks(id) {
+                            if (id.includes('node_modules')) {
+                                return 'vendor';
+                            }
+                        }
+                    }
+                },
+                chunkSizeWarningLimit: 1500
             }
             : {};
     return {

@@ -142,29 +142,68 @@ npm install
 ### Android (Capacitor)
 
 1. Make sure Android Studio is installed.
-2. Run:
+2. **(Importante!)** Su macOS/Linux, assicurati che il file `android/local.properties` contenga la riga corretta per il percorso SDK:
+   ```
+   sdk.dir=/Users/<TUO_USER>/Library/Android/sdk
+   ```
+   Sostituisci `<TUO_USER>` con il tuo username Mac.
+   Su Windows:
+   ```
+   sdk.dir=C:\Users\<YOUR_USER>\AppData\Local\Android\Sdk
+   ```
+   Sostituisci `<YOUR_USER>` con il tuo username Windows.
+3. Run:
    ```sh
    npm run build:android
    ```
-3. Open the `android` folder in Android Studio and run the app on an emulator/device.
+   (Il comando funziona sia su Windows che su macOS/Linux)
+4. Open the `android` folder in Android Studio and run the app on an emulator/device.
 
-**How to manage Android emulators on Windows:**
+**How to manage Android emulators:**
 
 - Open Android Studio and go to "Device Manager" (phone icon top right, or menu: Tools > Device Manager).
 - Here you can see all installed emulators (AVD), create new ones, or start them by clicking the ▶️ button next to the name.
-- Once the emulator is running, you can run the app from the "Run" button in Android Studio or from terminal with:
-  ```powershell
-  cd android
-  .\gradlew installDebug
-  ```
-- To list emulators from terminal:
+- Once the emulator is running, you can run the app from the "Run" button in Android Studio or from terminal:
+  - On Windows:
+    ```powershell
+    cd android
+    .\gradlew installDebug
+    ```
+
+  - On macOS/Linux:
+    ```sh
+    cd android
+    ./gradlew installDebug
+    ```
+
+- To list emulators from terminal (Windows):
   ```powershell
   & "$env:LOCALAPPDATA\Android\Sdk\emulator\emulator.exe" -list-avds
   ```
-- To start an emulator from terminal:
-  ```powershell
-  "%LOCALAPPDATA%\Android\Sdk\emulator\emulator.exe" -avd EMULATOR_NAME
+- To list emulators from terminal (macOS/Linux):
+  ```sh
+  ~/Library/Android/sdk/emulator/emulator -list-avds
   ```
+- To start an emulator from terminal (macOS/Linux):
+  ```sh
+  ~/Library/Android/sdk/emulator/emulator -avd NOME_EMULATORE
+  ```
+
+**Nota adb su macOS/Linux:**
+Se ottieni "command not found: adb", significa che adb non è nel tuo PATH. Puoi:
+
+- Usare il percorso completo, ad esempio:
+  ```sh
+  ~/Library/Android/sdk/platform-tools/adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+  ```
+- Oppure aggiungere platform-tools al PATH temporaneamente:
+  ```sh
+  export PATH="$PATH:$HOME/Library/Android/sdk/platform-tools"
+  adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+  ```
+
+Se vuoi renderlo permanente, aggiungi la riga export al tuo ~/.zshrc.
+
 
 **Where to find the generated APK:**
 
@@ -172,10 +211,33 @@ npm install
   ```
   android/app/build/outputs/apk/debug/app-debug.apk
   ```
-- You can install it on a physical device with:
-  ```powershell
-  adb install android/app/build/outputs/apk/debug/app-debug.apk
-  ```
+
+---
+
+### 📲 Installare l'app direttamente su un telefono Android (senza Android Studio)
+
+Se Android Studio crasha o vuoi installare l'app direttamente:
+
+1. Collega il telefono al computer via USB.
+2. Attiva il debug USB nelle Opzioni sviluppatore del telefono.
+3. Assicurati che il comando `adb` sia disponibile (si trova in `~/Library/Android/sdk/platform-tools/adb` su Mac, oppure in `platform-tools` della cartella SDK su Windows).
+4. Costruisci l'APK:
+   ```sh
+   npm run build:android
+   ```
+5. Installa l'APK sul telefono:
+   ```sh
+   adb install android/app/build/outputs/apk/debug/app-debug.apk
+   ```
+   Se adb non è nel PATH, usa il percorso completo, ad esempio:
+   ```sh
+   ~/Library/Android/sdk/platform-tools/adb install android/app/build/outputs/apk/debug/app-debug.apk
+   ```
+6. Accetta eventuali richieste di autorizzazione sul telefono.
+
+Ora l'app sarà installata e visibile tra le app del telefono.
+
+---
 
 **Windows note:**
 If you get the error "adb not recognized", it means adb is not in your system PATH.
@@ -250,6 +312,9 @@ sudo gem install cocoapods
 ```sh
 npm run build:web && npx cap sync ios
 ```
+<<<<<<< HEAD
 
 ---
 >>>>>>> cf851a2 (first)
+=======
+>>>>>>> 3717d11 (appicon)

@@ -92,7 +92,7 @@ export function AddAccountDialog({
         <DialogContent className="max-w-[340px] p-4 rounded-lg">
           <DialogHeader>
             <DialogTitle>Add Account</DialogTitle>
-            <HeaderCloseButton circled={false} />
+            <HeaderCloseButton />
           </DialogHeader>
 
           <AnimatePresence mode="wait">

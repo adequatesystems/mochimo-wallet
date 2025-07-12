@@ -14,16 +14,11 @@ const DialogPortal = DialogPrimitive.Portal
 const DialogClose = DialogPrimitive.Close
 
 // Nuovo componente per il pulsante di chiusura posizionato nell'header
-const HeaderCloseButton = ({ circled = false }: { circled?: boolean }) => (
+const HeaderCloseButton = () => (
   <DialogPrimitive.Close
-    className={
-      circled
-        ? "rounded-full p-2 opacity-80 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 bg-background border border-green-400"
-        : "p-2 opacity-80 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-    }
-    style={circled ? { boxShadow: "0 0 0 2px #22c55e" } : {}}
+    className="p-2 opacity-80 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
   >
-    <X className={circled ? "h-6 w-6 text-green-400" : "h-6 w-6"} />
+    <X className="h-6 w-6" />
     <span className="sr-only">Close</span>
   </DialogPrimitive.Close>
 )
