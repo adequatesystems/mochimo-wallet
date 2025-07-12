@@ -1,0 +1,194 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Light theme - Softer, more professional colors */
+    --background: 0 0% 100%; /* Pure white background */
+    --foreground: 200 14% 14%; /* Dark charcoal text */
+    
+    --card: 0 0% 100%;
+    --card-foreground: 200 14% 14%;
+    
+    --popover: 0 0% 100%;  /* White background */
+    --popover-foreground: 200 14% 14%;  /* Dark text */
+    
+    /* Mint green with better contrast */
+    --primary: 160 84% 39%;  /* Slightly darker mint */
+    --primary-foreground: 0 0% 100%;
+    
+    /* Complementary green */
+    --secondary: 161 47% 35%;  /* More muted forest green */
+    --secondary-foreground: 0 0% 100%;
+    
+    /* Subtle muted colors */
+    --muted: 210 20% 98%; /* Very light blue-grey */
+    --muted-foreground: 215 25% 27%; /* Readable muted text */
+    
+    /* Subtle accent for hover states */
+    --accent: 210 20% 97%; /* Slightly blue-tinted grey */
+    --accent-foreground: 200 14% 14%;
+    
+    /* Refined borders and inputs */
+    --border: 215 32% 92%;  /* Subtle blue-grey border */
+    --input: 215 32% 92%;
+    --ring: 160 84% 39%;  /* Matches primary */
+
+    --radius: 0.5rem;
+
+    /* Status colors */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --success: 160 84% 39%;  /* Matches primary */
+    --success-foreground: 0 0% 100%;
+    
+    --info: 210 100% 64%;
+    --info-foreground: 0 0% 100%;
+  }
+
+  .dark {
+    --background: 200 14% 14%; /* Current dark background */
+    --foreground: 0 0% 100%;
+    
+    --card: 200 14% 14%;
+    --card-foreground: 0 0% 100%;
+    
+    --popover: 200 14% 14%;  /* Dark background */
+    --popover-foreground: 0 0% 100%;  /* White text */
+    
+    --primary: 160 80% 47%;
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 161 83% 38%;
+    --secondary-foreground: 0 0% 100%;
+    
+    --muted: 200 10% 25%;
+    --muted-foreground: 200 10% 70%;
+    
+    --accent: 200 10% 20%;
+    --accent-foreground: 0 0% 100%;
+    
+    --border: 200 10% 20%;
+    --input: 200 10% 20%;
+    --ring: 160 80% 47%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 160 80% 47%;
+    --success-foreground: 0 0% 100%;
+    
+    --info: 210 100% 64%;
+    --info-foreground: 0 0% 100%;
+  }
+
+  /* Typography base styles */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-montserrat font-semibold;
+  }
+
+  body {
+    @apply font-montserrat text-base;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Secondary text elements */
+  .font-secondary {
+    @apply font-poppins;
+  }
+
+  /* Typography utility classes */
+  .heading-1 {
+    @apply font-montserrat text-4xl font-bold;
+  }
+  
+  .heading-2 {
+    @apply font-montserrat text-3xl font-semibold;
+  }
+  
+  .heading-3 {
+    @apply font-montserrat text-2xl font-semibold;
+  }
+  
+  .body-primary {
+    @apply font-montserrat text-base;
+  }
+  
+  .body-secondary {
+    @apply font-poppins text-base;
+  }
+
+  /* Modern scrollbar styling */
+  ::-webkit-scrollbar {
+    @apply w-1.5;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border hover:bg-border/80 dark:bg-muted-foreground/20 dark:hover:bg-muted-foreground/30 rounded-full transition-colors;
+  }
+
+  /* Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+
+  .dark * {
+    scrollbar-color: hsl(var(--muted-foreground) / 0.2) transparent;
+  }
+
+  /* Hide scrollbar in modals on mobile but keep functionality */
+  @media (max-width: 640px) {
+    .dialog-content {
+      ::-webkit-scrollbar {
+        display: none;
+      }
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  }
+}
+
+/* Ensure proper dimensions for the extension popup */
+html, body {
+  min-width: 100%;
+  min-height: 100%;
+  width: 100%;
+  height: 100%;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  /* Add custom button styles */
+  .btn-primary {
+    @apply bg-primary hover:bg-primary/90 text-primary-foreground;
+  }
+  .btn-secondary {
+    @apply bg-secondary hover:bg-secondary/90 text-secondary-foreground;
+  }
+  /* Add gradient effects */
+  .gradient-mint {
+    @apply bg-gradient-to-r from-primary to-secondary;
+  }
+  /* Add custom card styles */
+  .card-hover {
+    @apply hover:shadow-lg hover:border-primary/20 transition-all duration-150;
+  }
+}

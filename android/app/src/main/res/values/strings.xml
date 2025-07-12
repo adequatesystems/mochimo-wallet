@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Mochimo Wallet</string>
+    <string name="title_activity_main">Mochimo Wallet</string>
+    <string name="package_name">com.mochimo.wallet</string>
+    <string name="custom_url_scheme">com.mochimo.wallet</string>
+</resources>
