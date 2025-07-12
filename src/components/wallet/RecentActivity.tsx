@@ -19,6 +19,7 @@ interface Transaction {
   blockNumber?: number
   pending?: boolean
   fee?: string // solo per send
+  memo?: string // add memo field
 }
 
 interface RecentActivityProps {
@@ -142,7 +143,8 @@ export function RecentActivity({ account, onRefresh }: RecentActivityProps) {
                   txid: tx.transaction_identifier?.hash,
                   blockNumber: blockNumber,
                   pending: false,
-                  fee: feePerDest.toString()
+                  fee: feePerDest.toString(),
+                  memo: destOp.metadata?.memo // add memo
                 })
               }
             }
@@ -162,7 +164,8 @@ export function RecentActivity({ account, onRefresh }: RecentActivityProps) {
                   timestamp: timestamp,
                   address: sourceOp ? sourceOp.account?.address : 'Unknown',
                   txid: tx.transaction_identifier?.hash,
-                  blockNumber: blockNumber
+                  blockNumber: blockNumber,
+                  memo: recvOp.metadata?.memo // add memo
                 })
               }
             }
@@ -404,6 +407,9 @@ export function RecentActivity({ account, onRefresh }: RecentActivityProps) {
                     <p className="text-xs text-muted-foreground">
                       {new Date(tx.timestamp).toLocaleString()}
                     </p>
+                    {tx.memo && (
+                      <p className="text-xs text-muted-foreground italic mt-1">Memo: {tx.memo.replace(/\u0000+$/, '').replace(/\u0000/g, '')}</p>
+                    )}
                   </div>
                 </div>
                 <div className="text-right">
