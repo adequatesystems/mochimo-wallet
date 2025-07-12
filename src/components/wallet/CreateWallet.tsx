@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { usePlatform } from '@/lib/utils/usePlatform'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Eye, EyeOff, Lock } from 'lucide-react'
@@ -13,6 +14,7 @@ interface CreateWalletProps {
 }
 
 export function CreateWallet({ onWalletCreated }: CreateWalletProps) {
+  const { isMobile, safeAreaInsets } = usePlatform();
   const [step, setStep] = useState<'password' | 'backup'>('password')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -99,7 +101,14 @@ export function CreateWallet({ onWalletCreated }: CreateWalletProps) {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-full p-8">
+    <div
+      className={
+        isMobile
+          ? 'flex flex-col items-center min-h-full pt-8 px-4' // align to top with margin
+          : 'flex flex-col items-center justify-center min-h-full p-8' // center on web
+      }
+      style={isMobile ? { paddingTop: safeAreaInsets.top ? safeAreaInsets.top + 16 : 32 } : {}}
+    >
       <div className="w-full max-w-md space-y-8">
         {/* Header */}
         <div className="flex flex-col items-center space-y-4">
