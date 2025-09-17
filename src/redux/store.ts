@@ -1,15 +1,17 @@
-import { Action, configureStore, ThunkAction, ThunkDispatch, AnyAction, AsyncThunk } from '@reduxjs/toolkit';
-import walletReducer from './slices/walletSlice';
-import networkReducer from './slices/networkSlice';
-import transactionReducer from './slices/transactionSlice';
+import { Action, AnyAction, AsyncThunk, configureStore, ThunkAction, ThunkDispatch } from '@reduxjs/toolkit';
 import accountReducer from './slices/accountSlice';
+import networkReducer from './slices/networkSlice';
+import providersReducer from './slices/providerSlice';
+import transactionReducer from './slices/transactionSlice';
+import walletReducer from './slices/walletSlice';
 
 export const store = configureStore({
     reducer: {
         wallet: walletReducer,
         network: networkReducer,
         transaction: transactionReducer,
-        accounts: accountReducer
+        accounts: accountReducer,
+        providers: providersReducer
     },
     middleware: (getDefaultMiddleware) =>
         getDefaultMiddleware({

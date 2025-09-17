@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { useAccounts } from './useAccounts';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { NetworkProvider } from '../context/NetworkContext';
-import { useAppDispatch } from './useStore';
 import { updateAccount } from '../slices/accountSlice';
-import { setBlockHeight } from '../slices/networkSlice';
+import { setBlockHeight, setNetworkStatus } from '../slices/networkSlice';
+import { useAccounts } from './useAccounts';
+import { useAppDispatch } from './useStore';
 
 interface BalanceCache {
     [blockHeight: number]: {
@@ -88,8 +88,9 @@ export const useNetworkSync = (interval: number = 10000) => {
                 throw new Error('Invalid block height received');
             }
 
-            // Update network state with new block height
+            // Update network state with new block height and mark connected
             dispatch(setBlockHeight(currentHeight));
+            dispatch(setNetworkStatus({ isConnected: true }));
 
             const needsUpdate = currentHeight > lastBlockHeight || 
                               accounts.some(account => !cacheRef.current[currentHeight]?.[account.tag]);
@@ -103,6 +104,8 @@ export const useNetworkSync = (interval: number = 10000) => {
         } catch (error) {
             console.error('Balance polling error:', error);
             setConsecutiveErrors(prev => prev + 1);
+            const message = error instanceof Error ? error.message : 'Network unreachable';
+            dispatch(setNetworkStatus({ isConnected: false, error: message }));
         } finally {
             isUpdatingRef.current = false;
             timeoutRef.current = setTimeout(pollBalances, interval);
