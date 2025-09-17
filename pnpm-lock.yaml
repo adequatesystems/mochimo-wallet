@@ -18,8 +18,8 @@ importers:
         specifier: ^4.2.0
         version: 4.2.0
       mochimo-mesh-api-client:
-        specifier: github:adequatesystems/mochimo-mesh-api-client#v1.0.4
-        version: https://codeload.github.com/adequatesystems/mochimo-mesh-api-client/tar.gz/7edd2ebed4fac4ed649f3f7ca588d444f41a3ece(crypto-js@4.2.0)(mochimo-wots@https://codeload.github.com/adequatesystems/mochimo-wots/tar.gz/59c06c7e2697f4d7c4482343444b644f0e237910)
+        specifier: github:adequatesystems/mochimo-mesh-api-client#v1.0.5-dev
+        version: https://codeload.github.com/adequatesystems/mochimo-mesh-api-client/tar.gz/6aba0f3720ef5c1229a85ffb7fa024a8a6b7fdeb(crypto-js@4.2.0)(mochimo-wots@https://codeload.github.com/adequatesystems/mochimo-wots/tar.gz/59c06c7e2697f4d7c4482343444b644f0e237910)
       mochimo-wots:
         specifier: github:adequatesystems/mochimo-wots#v1.2.8
         version: https://codeload.github.com/adequatesystems/mochimo-wots/tar.gz/59c06c7e2697f4d7c4482343444b644f0e237910
@@ -1346,9 +1346,9 @@ packages:
   mlly@1.7.3:
     resolution: {integrity: sha512-xUsx5n/mN0uQf4V548PKQ+YShA4/IW0KI1dZhrNrPCLG+xizETbHTkOa1f8/xut9JRPp8kQuMnz0oqwkTiLo/A==}
 
-  mochimo-mesh-api-client@https://codeload.github.com/adequatesystems/mochimo-mesh-api-client/tar.gz/7edd2ebed4fac4ed649f3f7ca588d444f41a3ece:
-    resolution: {tarball: https://codeload.github.com/adequatesystems/mochimo-mesh-api-client/tar.gz/7edd2ebed4fac4ed649f3f7ca588d444f41a3ece}
-    version: 1.0.4
+  mochimo-mesh-api-client@https://codeload.github.com/adequatesystems/mochimo-mesh-api-client/tar.gz/6aba0f3720ef5c1229a85ffb7fa024a8a6b7fdeb:
+    resolution: {tarball: https://codeload.github.com/adequatesystems/mochimo-mesh-api-client/tar.gz/6aba0f3720ef5c1229a85ffb7fa024a8a6b7fdeb}
+    version: 1.0.5
     peerDependencies:
       crypto-js: ^4.2.0
       mochimo-wots: ^1.2.1
@@ -3226,7 +3226,7 @@ snapshots:
       pkg-types: 1.2.1
       ufo: 1.5.4
 
-  mochimo-mesh-api-client@https://codeload.github.com/adequatesystems/mochimo-mesh-api-client/tar.gz/7edd2ebed4fac4ed649f3f7ca588d444f41a3ece(crypto-js@4.2.0)(mochimo-wots@https://codeload.github.com/adequatesystems/mochimo-wots/tar.gz/59c06c7e2697f4d7c4482343444b644f0e237910):
+  mochimo-mesh-api-client@https://codeload.github.com/adequatesystems/mochimo-mesh-api-client/tar.gz/6aba0f3720ef5c1229a85ffb7fa024a8a6b7fdeb(crypto-js@4.2.0)(mochimo-wots@https://codeload.github.com/adequatesystems/mochimo-wots/tar.gz/59c06c7e2697f4d7c4482343444b644f0e237910):
     dependencies:
       crypto-js: 4.2.0
       mochimo-wots: https://codeload.github.com/adequatesystems/mochimo-wots/tar.gz/59c06c7e2697f4d7c4482343444b644f0e237910
