@@ -11,7 +11,7 @@ import { SessionManager } from '../../../../src/redux/context/SessionContext';
 import { MasterSeed } from '../../../../src/core/MasterSeed';
 import type { PropsWithChildren } from 'react';
 import React from 'react';
-import { vi } from 'vitest';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { TransactionBuilder } from 'mochimo-mesh-api-client';
 
 // Mock WOTS module

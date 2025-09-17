@@ -48,6 +48,49 @@ export interface TagActivationResponse {
 }
 
 /**
+ * Wallet transaction interface
+ */
+export interface WalletTransaction {
+    type: 'send' | 'receive' | 'mining';
+    amount: string;
+    timestamp: number;
+    address: string;
+    txid: string;
+    blockNumber?: number;
+    pending: boolean;
+    fee?: string;
+    memo?: string;
+}
+
+/**
+ * Pagination options for transaction queries
+ */
+export interface PaginationOptions {
+    limit?: number;
+    offset?: number;
+    maxBlock?: number;
+    status?: string;
+}
+
+/**
+ * Paginated response for transactions
+ */
+export interface PaginatedTransactionResponse {
+    transactions: WalletTransaction[];
+    totalCount?: number;
+    hasMore: boolean;
+    nextOffset?: number;
+}
+
+/**
+ * Activity fetch options
+ */
+export interface ActivityFetchOptions extends PaginationOptions {
+    includeMempool?: boolean;
+    includeConfirmed?: boolean;
+}
+
+/**
  * Network service interface
  */
 export interface NetworkService {
@@ -84,6 +127,26 @@ export interface NetworkService {
      * @param tag The tag to get the balance of
      */
     getBalance(tag: string): Promise<string>;
+
+    /**
+     * Fetches recent activity for an account with pagination support
+     * @param account The account to fetch activity for
+     * @param options Pagination and filtering options
+     */
+    fetchRecentActivity(account: any, options?: ActivityFetchOptions): Promise<PaginatedTransactionResponse>;
+
+    /**
+     * Fetches confirmed transactions for an account with pagination
+     * @param address The account address
+     * @param options Pagination options
+     */
+    fetchConfirmedTransactions(address: string, options?: PaginationOptions): Promise<PaginatedTransactionResponse>;
+
+    /**
+     * Fetches mempool transactions for an account
+     * @param address The account address
+     */
+    fetchMempoolTransactions(address: string): Promise<WalletTransaction[]>;
 } 
 export interface NetworkState {
     blockHeight: number;
