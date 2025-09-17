@@ -121,13 +121,25 @@ export class MeshNetworkService implements NetworkService {
         // Sort all transactions by timestamp (newest first)
         allTransactions.sort((a, b) => b.timestamp - a.timestamp);
 
-        // Apply pagination to the combined results
-        const paginatedTransactions = allTransactions.slice(offset, offset + limit);
-        const nextOffset = offset + limit;
-        const finalHasMore = nextOffset < allTransactions.length;
+        // For pagination, use the confirmed transactions hasMore since that's what supports pagination
+        // Mempool transactions don't support pagination (they're fetched all at once)
+        let finalHasMore = false;
+        let nextOffset = offset + limit;
+        
+        if (includeConfirmed && !includeMempool) {
+            // Only confirmed transactions - use the confirmed hasMore from API
+            finalHasMore = hasMore;
+        } else if (!includeConfirmed && includeMempool) {
+            // Only mempool - no pagination support
+            finalHasMore = false;
+        } else {
+            // Both confirmed and mempool - use confirmed pagination info
+            // since mempool doesn't support pagination
+            finalHasMore = hasMore;
+        }
 
         return {
-            transactions: paginatedTransactions,
+            transactions: allTransactions,
             totalCount: allTransactions.length,
             hasMore: finalHasMore,
             nextOffset: finalHasMore ? nextOffset : undefined
@@ -227,8 +239,9 @@ export class MeshNetworkService implements NetworkService {
                 }
             }
 
-            // Determine if there are more transactions
-            const hasMore = txResult.transactions.length === limit;
+            // Determine if there are more transactions using the API response
+            // The API provides nextOffset and totalCount for proper pagination
+            const hasMore = txResult.next_offset !== undefined && txResult.next_offset > 0;
             const totalCount = txResult.total_count || transactions.length;
 
             return {
