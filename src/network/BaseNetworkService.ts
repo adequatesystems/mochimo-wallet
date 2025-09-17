@@ -1,4 +1,5 @@
-import { NetworkService, TagResolveResponse, TransactionResponse, TagActivationResponse } from '../types/network';
+import { Account } from '../types/account';
+import { ActivityFetchOptions, NetworkService, PaginatedTransactionResponse, PaginationOptions, TagActivationResponse, TagResolveResponse, TransactionResponse, WalletTransaction } from '../types/network';
 
 export abstract class BaseNetworkService implements NetworkService {
     getBalance(tag: string): Promise<string> {
@@ -19,4 +20,17 @@ export abstract class BaseNetworkService implements NetworkService {
     }
 
     abstract getNetworkStatus(): Promise<{ height: number; nodes: any[] }>;
+
+    // Pagination methods - throw errors by default, to be implemented by subclasses
+    async fetchRecentActivity(account: Account, options?: ActivityFetchOptions): Promise<PaginatedTransactionResponse> {
+        throw new Error("Method not implemented.");
+    }
+
+    async fetchConfirmedTransactions(address: string, options?: PaginationOptions): Promise<PaginatedTransactionResponse> {
+        throw new Error("Method not implemented.");
+    }
+
+    async fetchMempoolTransactions(address: string): Promise<WalletTransaction[]> {
+        throw new Error("Method not implemented.");
+    }
 } 
