@@ -168,6 +168,7 @@ export const loadMoreActivityAction = createAsyncThunk(
         const state = getState() as RootState;
         const selectedAccount = selectSelectedAccount(state);
         const currentOffset = state.transaction.activity.currentOffset;
+        const lastOptions = state.transaction.activity.lastFetchOptions || {} as ActivityFetchOptions;
         
         if (!selectedAccount) {
             throw new Error('No account selected');
@@ -182,7 +183,11 @@ export const loadMoreActivityAction = createAsyncThunk(
         try {
             const network = NetworkProvider.getNetwork();
             const result = await network.fetchRecentActivity(selectedAccount, {
+                // carry forward prior options (e.g., maxBlock, includeConfirmed),
+                // and ensure we do not re-append mempool on subsequent pages
+                ...lastOptions,
                 ...options,
+                includeMempool: false,
                 offset: currentOffset
             });
 
@@ -205,27 +210,12 @@ export const loadMoreActivityAction = createAsyncThunk(
 );
 
 /**
- * Fetch activity for a specific account (with caching)
+ * Fetch activity for a specific account
  */
 export const fetchAccountActivityAction = createAsyncThunk(
     'transaction/fetchAccountActivity',
     async ({ account, options = {} }: { account: Account; options?: ActivityFetchOptions }, { getState, dispatch }) => {
-        const state = getState() as RootState;
         const accountId = account.tag;
-        const cachedData = state.transaction.accountActivity[accountId];
-        
-        // Check if we have recent cached data (less than 5 minutes old)
-        const isStale = !cachedData || (Date.now() - cachedData.lastUpdated) > 5 * 60 * 1000;
-        
-        if (!isStale && cachedData.transactions.length > 0) {
-            // Return cached data
-            return {
-                transactions: cachedData.transactions,
-                totalCount: cachedData.totalCount,
-                hasMore: cachedData.hasMore,
-                nextOffset: cachedData.currentOffset
-            };
-        }
 
         dispatch(setActivityLoading(true));
         dispatch(setActivityError(null));

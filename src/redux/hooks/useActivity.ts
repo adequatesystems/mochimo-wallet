@@ -11,9 +11,10 @@ import {
     refreshActivityAction
 } from '../actions/transactionActions';
 import {
+    makeSelectAccountTransactions,
     selectAccountActivity,
     selectAccountPagination,
-    selectAccountTransactions,
+    // selectAccountTransactions,
     selectActivityError,
     selectActivityLoading,
     selectActivityPagination,
@@ -142,7 +143,8 @@ export const useAccountActivity = (account: Account) => {
     
     // Selectors for specific account
     const accountData = useAppSelector(state => selectAccountActivity(state)(account.tag));
-    const accountTransactions = useAppSelector(state => selectAccountTransactions(state)(account.tag));
+    const selectAccountTx = useMemo(makeSelectAccountTransactions, []);
+    const accountTransactions = useAppSelector(state => selectAccountTx(state, account.tag));
     const accountPagination = useAppSelector(state => selectAccountPagination(state)(account.tag));
     const isStale = useAppSelector(state => selectIsAccountDataStale(state)(account.tag));
     

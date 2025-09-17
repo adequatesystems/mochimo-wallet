@@ -90,6 +90,20 @@ export const selectConfirmedTransactions = createSelector(
 );
 
 /**
+ * Returns all pending transactions plus the top N confirmed transactions,
+ * both sorted by timestamp descending, with pending first.
+ */
+export const selectPendingPlusTopNConfirmed = (count: number) => createSelector(
+    [selectPendingTransactions, selectConfirmedTransactions],
+    (pending, confirmed) => {
+        const sortDesc = (a: any, b: any) => (b.timestamp || 0) - (a.timestamp || 0);
+        const pendingSorted = [...pending].sort(sortDesc);
+        const confirmedSortedTopN = [...confirmed].sort(sortDesc).slice(0, Math.max(0, count));
+        return [...pendingSorted, ...confirmedSortedTopN];
+    }
+);
+
+/**
  * Select transactions by date range
  */
 export const selectTransactionsByDateRange = createSelector(
@@ -183,9 +197,27 @@ export const selectAccountActivity = createSelector(
  * Select account transactions by account ID
  */
 const EMPTY_TRANSACTIONS: any[] = [];
+// Factory function to create memoized selectors for each account
+export const makeSelectAccountTransactions = () => createSelector(
+    [
+        selectAccountActivityCache,
+        (_: RootState, accountId: string) => accountId
+    ],
+    (cache, accountId) => {
+        const transactions = cache[accountId]?.transactions ?? EMPTY_TRANSACTIONS;
+        // Sort by timestamp descending (newest first)
+        if (transactions.length <= 1) return transactions;
+        return [...transactions].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    }
+);
+
 export const selectAccountTransactions = createSelector(
     [selectAccountActivityCache],
-    (cache) => (accountId: string) => cache[accountId]?.transactions ?? EMPTY_TRANSACTIONS
+    (cache) => (accountId: string) => {
+        const transactions = cache[accountId]?.transactions ?? EMPTY_TRANSACTIONS;
+        // Sort by timestamp descending (newest first) 
+        return [...transactions].sort((a, b) => b.timestamp - a.timestamp);
+    }
 );
 
 /**
