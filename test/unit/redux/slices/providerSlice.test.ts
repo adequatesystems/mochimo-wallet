@@ -3,11 +3,11 @@ import { describe, expect, it, vi } from 'vitest'
 import accountReducer from '../../../../src/redux/slices/accountSlice'
 import networkReducer from '../../../../src/redux/slices/networkSlice'
 import reducer, {
-    addCustomProvider,
-    applyActiveNetworkInstance,
-    hydrateProviders,
-    removeProvider,
-    setActiveProvider
+  addCustomProvider,
+  applyActiveNetworkInstance,
+  hydrateProviders,
+  removeProvider,
+  setActiveProvider
 } from '../../../../src/redux/slices/providerSlice'
 import transactionReducer from '../../../../src/redux/slices/transactionSlice'
 import walletReducer from '../../../../src/redux/slices/walletSlice'
@@ -99,6 +99,41 @@ describe('providerSlice', () => {
       store.dispatch(setActiveProvider({ kind: 'proxy', id: proxyCustom.id }))
       expect(store.getState().providers.byKind.proxy.activeId).toBe(proxyCustom.id)
     }
+  })
+
+  it('updates network status when switching between healthy and down providers', async () => {
+    const store = makeStore()
+    await store.dispatch(hydrateProviders())
+
+    // Add two custom mesh endpoints: one healthy, one down
+    store.dispatch(addCustomProvider({ kind: 'mesh', name: 'OK', apiUrl: 'http://ok-endpoint' }))
+    store.dispatch(addCustomProvider({ kind: 'mesh', name: 'DOWN', apiUrl: 'http://down-endpoint' }))
+
+    // Spy on MeshNetworkService.getNetworkStatus to simulate behavior based on url
+    const realModule = await import('../../../../src/network/MeshNetworkService')
+    const spy = vi.spyOn((realModule as any).MeshNetworkService.prototype, 'getNetworkStatus').mockImplementation(function (this: any) {
+      const url: string = this.apiUrl
+      if (url.includes('down')) {
+        return Promise.reject(new Error('down'))
+      }
+      return Promise.resolve({ height: 123, nodes: [] })
+    })
+
+    const mesh = store.getState().providers.byKind.mesh
+    const ok = mesh.items.find(i => i.apiUrl.includes('ok-endpoint'))!
+    const down = mesh.items.find(i => i.apiUrl.includes('down-endpoint'))!
+
+    // Switch to healthy
+    store.dispatch(setActiveProvider({ kind: 'mesh', id: ok.id }))
+    await store.dispatch(applyActiveNetworkInstance())
+    expect(store.getState().network.isConnected).toBe(true)
+
+    // Switch to down
+    store.dispatch(setActiveProvider({ kind: 'mesh', id: down.id }))
+    await store.dispatch(applyActiveNetworkInstance())
+    expect(store.getState().network.isConnected).toBe(false)
+
+    spy.mockRestore()
   })
 })
 

@@ -194,6 +194,8 @@ export const applyActiveNetworkInstance = createAsyncThunk<void, void, { state: 
     NetworkProvider.setNetwork(instance)
     // Opportunistic immediate health check to update header without waiting for poll
     try {
+      // Pessimistically mark as offline until proven healthy
+      dispatch(setNetworkStatus({ isConnected: false, error: undefined as any }))
       const status = await instance.getNetworkStatus()
       const height = Number((status as any)?.height ?? NaN)
       if (Number.isFinite(height)) {
