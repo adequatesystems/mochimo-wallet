@@ -2,6 +2,7 @@ import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit'
 import { MeshNetworkService } from '../../network/MeshNetworkService'
 import { ProxyNetworkService } from '../../network/proxyNetworkService'
 import { NetworkProvider } from '../context/NetworkContext'
+import { setBlockHeight, setNetworkStatus } from '../slices/networkSlice'
 import { RootState } from '../store'
 
 // Provider kinds supported (extensible)
@@ -182,7 +183,7 @@ export const selectActiveProvider = (state: RootState, kind: ProviderKind) => {
 // Effect helper to instantiate the active provider for mesh/proxy
 export const applyActiveNetworkInstance = createAsyncThunk<void, void, { state: RootState }>(
   'providers/applyActiveInstance',
-  async (_, { getState }) => {
+  async (_, { getState, dispatch }) => {
     const state = getState()
     const mesh = selectActiveProvider(state, 'mesh')
     const proxy = selectActiveProvider(state, 'proxy')
@@ -191,6 +192,17 @@ export const applyActiveNetworkInstance = createAsyncThunk<void, void, { state: 
     if (!cfg) return
     const instance = cfg.kind === 'mesh' ? new MeshNetworkService(cfg.apiUrl) : new ProxyNetworkService(cfg.apiUrl)
     NetworkProvider.setNetwork(instance)
+    // Opportunistic immediate health check to update header without waiting for poll
+    try {
+      const status = await instance.getNetworkStatus()
+      const height = Number((status as any)?.height ?? NaN)
+      if (Number.isFinite(height)) {
+        dispatch(setBlockHeight(height))
+        dispatch(setNetworkStatus({ isConnected: true }))
+      }
+    } catch {
+      dispatch(setNetworkStatus({ isConnected: false, error: 'Network unreachable' }))
+    }
   }
 )
 
