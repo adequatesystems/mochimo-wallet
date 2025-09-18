@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSelector } from 'react-redux';
 import { NetworkProvider } from '../context/NetworkContext';
 import { updateAccount } from '../slices/accountSlice';
 import { setBlockHeight, setNetworkStatus } from '../slices/networkSlice';
+import type { RootState } from '../store';
 import { useAccounts } from './useAccounts';
 import { useAppDispatch } from './useStore';
 
@@ -14,6 +16,12 @@ interface BalanceCache {
 export const useNetworkSync = (interval: number = 10000) => {
     const { accounts } = useAccounts();
     const dispatch = useAppDispatch();
+    // Track active provider change to force immediate re-poll on switch
+    const providerKey = useSelector((state: RootState) => {
+        const mesh = state.providers?.byKind?.mesh?.activeId || '';
+        const proxy = state.providers?.byKind?.proxy?.activeId || '';
+        return `${mesh}|${proxy}`;
+    });
     const timeoutRef = useRef<NodeJS.Timeout>();
     const [lastBlockHeight, setLastBlockHeight] = useState<number>(0);
     const [balanceCache, setBalanceCache] = useState<BalanceCache>({});
@@ -70,7 +78,7 @@ export const useNetworkSync = (interval: number = 10000) => {
     };
 
     const pollBalances = useCallback(async () => {
-        if (!accounts.length || isUpdatingRef.current) {
+        if (isUpdatingRef.current) {
             timeoutRef.current = setTimeout(pollBalances, interval);
             return;
         }
@@ -92,8 +100,8 @@ export const useNetworkSync = (interval: number = 10000) => {
             dispatch(setBlockHeight(currentHeight));
             dispatch(setNetworkStatus({ isConnected: true }));
 
-            const needsUpdate = currentHeight > lastBlockHeight || 
-                              accounts.some(account => !cacheRef.current[currentHeight]?.[account.tag]);
+            const needsUpdate = accounts.length > 0 && (currentHeight > lastBlockHeight || 
+                              accounts.some(account => !cacheRef.current[currentHeight]?.[account.tag]));
 
             if (needsUpdate) {
                 await updateBalances(currentHeight);
@@ -110,9 +118,14 @@ export const useNetworkSync = (interval: number = 10000) => {
             isUpdatingRef.current = false;
             timeoutRef.current = setTimeout(pollBalances, interval);
         }
-    }, [accounts, interval, lastBlockHeight]);
+    }, [accounts, interval, lastBlockHeight, providerKey]);
 
     useEffect(() => {
+        // On provider change, restart polling immediately
+        if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current);
+            timeoutRef.current = undefined;
+        }
         pollBalances();
         return () => {
             if (timeoutRef.current) {
@@ -120,5 +133,5 @@ export const useNetworkSync = (interval: number = 10000) => {
                 timeoutRef.current = undefined;
             }
         };
-    }, [pollBalances]);
+    }, [pollBalances, providerKey]);
 }; 
