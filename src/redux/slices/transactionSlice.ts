@@ -40,6 +40,9 @@ const transactionSlice = createSlice({
                 hash => hash !== action.payload
             );
         },
+        setPendingTransactions: (state, action: PayloadAction<string[]>) => {
+            state.pendingTransactions = action.payload;
+        },
         
         // Activity pagination actions
         setActivityLoading: (state, action: PayloadAction<boolean>) => {
@@ -147,6 +150,7 @@ export const {
     setError,
     addPendingTransaction,
     removePendingTransaction,
+    setPendingTransactions,
     setActivityLoading,
     setActivityError,
     setActivityData,

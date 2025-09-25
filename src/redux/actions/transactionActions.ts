@@ -367,3 +367,80 @@ export const fetchMempoolTransactionsAction = createAsyncThunk(
         }
     }
 );
+
+/**
+ * Refresh activity data and clean up confirmed pending transactions
+ * This action fetches fresh data and automatically removes any pending transactions
+ * that have been confirmed from the pendingTransactions array
+ */
+export const refreshAndCleanupActivityAction = createAsyncThunk(
+    'transaction/refreshAndCleanupActivity',
+    async (options: ActivityFetchOptions = {}, { getState, dispatch }) => {
+        const state = getState() as RootState;
+        const selectedAccount = selectSelectedAccount(state);
+        
+        if (!selectedAccount) {
+            throw new Error('No account selected');
+        }
+
+        dispatch(setActivityLoading(true));
+        dispatch(setActivityError(null));
+
+        try {
+            const network = NetworkProvider.getNetwork();
+            const result = await network.fetchRecentActivity(selectedAccount, options);
+
+            // Get current pending transactions
+            const currentPendingTxs = state.transaction.pendingTransactions;
+            
+            // Find which pending transactions are now confirmed
+            const confirmedTxIds = new Set(
+                result.transactions
+                    .filter(tx => !tx.pending) // Only confirmed transactions
+                    .map(tx => tx.txid)
+            );
+
+            // Remove confirmed transactions from pending list
+            const stillPendingTxs = currentPendingTxs.filter(txId => !confirmedTxIds.has(txId));
+            
+            // If no transactions were returned, clear all pending transactions
+            const finalPendingTxs = result.transactions.length === 0 ? [] : stillPendingTxs;
+            
+            // Update pending transactions if any were confirmed OR if no transactions were returned
+            if (finalPendingTxs.length !== currentPendingTxs.length) {
+                const confirmedCount = currentPendingTxs.length - finalPendingTxs.length;
+                if (confirmedCount > 0 && result.transactions.length > 0) {
+                    console.log(`Cleaned up ${confirmedCount} confirmed transactions from pending list`);
+                } else if (result.transactions.length === 0) {
+                    console.log('No transactions found, clearing all pending transactions');
+                }
+                
+                // Update the pending transactions array
+                dispatch({
+                    type: 'transaction/setPendingTransactions',
+                    payload: finalPendingTxs
+                });
+            }
+
+            // Update activity data
+            dispatch(setActivityData({
+                transactions: result.transactions,
+                totalCount: result.totalCount || 0,
+                hasMore: result.hasMore,
+                currentOffset: result.nextOffset || 0,
+                options
+            }));
+
+            return {
+                ...result,
+                cleanedUpCount: currentPendingTxs.length - stillPendingTxs.length
+            };
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Failed to refresh and cleanup activity';
+            dispatch(setActivityError(errorMessage));
+            throw error;
+        } finally {
+            dispatch(setActivityLoading(false));
+        }
+    }
+);

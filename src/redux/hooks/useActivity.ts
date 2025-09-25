@@ -8,7 +8,8 @@ import {
     fetchRecentActivityAction,
     loadMoreAccountActivityAction,
     loadMoreActivityAction,
-    refreshActivityAction
+    refreshActivityAction,
+    refreshAndCleanupActivityAction
 } from '../actions/transactionActions';
 import {
     makeSelectAccountTransactions,
@@ -84,6 +85,10 @@ export const useActivity = () => {
         return dispatch(refreshActivityAction(options)).unwrap();
     }, [dispatch]);
 
+    const refreshAndCleanup = useCallback(async (options: ActivityFetchOptions = {}) => {
+        return dispatch(refreshAndCleanupActivityAction(options)).unwrap();
+    }, [dispatch]);
+
     const fetchConfirmed = useCallback(async (options: ActivityFetchOptions = {}) => {
         return dispatch(fetchConfirmedTransactionsAction(options)).unwrap();
     }, [dispatch]);
@@ -122,6 +127,7 @@ export const useActivity = () => {
         fetchActivity,
         loadMore,
         refresh,
+        refreshAndCleanup,
         fetchConfirmed,
         fetchMempool,
         
@@ -305,10 +311,12 @@ export const useTransactionFilters = () => {
 };
 
 /**
- * Hook for real-time transaction monitoring
+ * Hook for real-time transaction monitoring with automatic pending transaction cleanup
+ * This hook polls for transaction updates and automatically removes confirmed
+ * transactions from the pending list
  */
 export const useTransactionMonitor = (intervalMs: number = 5000) => {
-    const { refresh, transactions } = useActivity();
+    const { refreshAndCleanup, transactions } = useActivity();
     const [isMonitoring, setIsMonitoring] = useState(false);
     const [lastTransactionCount, setLastTransactionCount] = useState(0);
 
@@ -326,14 +334,16 @@ export const useTransactionMonitor = (intervalMs: number = 5000) => {
 
         const interval = setInterval(async () => {
             try {
-                await refresh();
+                // Use refreshAndCleanup instead of refresh to automatically
+                // remove confirmed transactions from pending list
+                await refreshAndCleanup();
             } catch (error) {
-                console.error('Failed to refresh transactions:', error);
+                console.error('Failed to refresh and cleanup transactions:', error);
             }
         }, intervalMs);
 
         return () => clearInterval(interval);
-    }, [isMonitoring, refresh, intervalMs]);
+    }, [isMonitoring, refreshAndCleanup, intervalMs]);
 
     const newTransactionCount = transactions.length - lastTransactionCount;
     const hasNewTransactions = newTransactionCount > 0;
