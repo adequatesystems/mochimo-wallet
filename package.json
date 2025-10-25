@@ -36,7 +36,7 @@
     "@reduxjs/toolkit": "^2.5.0",
     "@scure/bip39": "^1.2.2",
     "crypto-js": "^4.2.0",
-    "mochimo-mesh-api-client": "github:adequatesystems/mochimo-mesh-api-client#v1.0.5-dev",
+    "mochimo-mesh-api-client": "github:adequatesystems/mochimo-mesh-api-client#v1.0.5",
     "mochimo-wots": "github:adequatesystems/mochimo-wots#v1.2.8",
     "node-forge": "^1.3.1",
     "pako": "^2.1.0",
