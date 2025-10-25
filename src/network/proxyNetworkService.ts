@@ -1,4 +1,6 @@
-import { NetworkService, TagActivationResponse, TagResolveResponse, TransactionResponse } from "../types/network";
+import { Account } from "../types/account";
+import { ActivityFetchOptions, NetworkService, PaginatedTransactionResponse, PaginationOptions, TagActivationResponse, TagResolveResponse, TransactionResponse, WalletTransaction } from "../types/network";
+
 export class ProxyNetworkService implements NetworkService {
     public apiUrl: string;
     getNetworkStatus(): Promise<{ height: number; nodes: any[]; }> {
@@ -62,6 +64,18 @@ export class ProxyNetworkService implements NetworkService {
             console.error('Error activating tag:', error);
             throw error;
         }
-    }       
+    }
 
+    // Pagination methods - not implemented for proxy service
+    async fetchRecentActivity(account: Account, options?: ActivityFetchOptions): Promise<PaginatedTransactionResponse> {
+        throw new Error("Pagination methods not supported by ProxyNetworkService. Use MeshNetworkService instead.");
+    }
+
+    async fetchConfirmedTransactions(address: string, options?: PaginationOptions): Promise<PaginatedTransactionResponse> {
+        throw new Error("Pagination methods not supported by ProxyNetworkService. Use MeshNetworkService instead.");
+    }
+
+    async fetchMempoolTransactions(address: string): Promise<WalletTransaction[]> {
+        throw new Error("Pagination methods not supported by ProxyNetworkService. Use MeshNetworkService instead.");
+    }
 }

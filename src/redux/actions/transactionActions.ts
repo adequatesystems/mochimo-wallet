@@ -1,15 +1,23 @@
-import { createAsyncThunk } from '@reduxjs/toolkit';
-import { RootState } from '../store';
-import { setLoading, setError, addPendingTransaction } from '../slices/transactionSlice';
-import { selectCurrentWOTSKeyPair, selectNextWOTSKeyPair, selectSelectedAccount } from '../selectors/accountSelectors';
 import { Account } from '@/types/account';
-import { MasterSeed } from '@/core/MasterSeed';
+import { ActivityFetchOptions } from '@/types/network';
+import { createAsyncThunk } from '@reduxjs/toolkit';
+import { selectCurrentWOTSKeyPair, selectNextWOTSKeyPair, selectSelectedAccount } from '../selectors/accountSelectors';
+import {
+    addPendingTransaction,
+    appendAccountActivityData,
+    appendActivityData,
+    setAccountActivityData,
+    setActivityData,
+    setActivityError,
+    setActivityLoading,
+    setError,
+    setLoading
+} from '../slices/transactionSlice';
+import { RootState } from '../store';
 
-import { Derivation } from '../utils/derivation';
-import { SessionManager } from '../context/SessionContext';
-import { NetworkProvider } from '../context/NetworkContext';
 import { isValidMemo, TransactionBuilder } from 'mochimo-mesh-api-client';
-import { TagUtils, WOTSWallet } from 'mochimo-wots';
+import { WOTSWallet } from 'mochimo-wots';
+import { NetworkProvider } from '../context/NetworkContext';
 
 interface SendTransactionParams {
     to: string;
@@ -107,3 +115,332 @@ async function createAndSendTransaction(
 
     return { tx: result.submitResult?.transaction_identifier };
 }
+
+// ============================================================================
+// ACTIVITY PAGINATION ACTIONS
+// ============================================================================
+
+/**
+ * Fetch recent activity for the selected account with pagination
+ */
+export const fetchRecentActivityAction = createAsyncThunk(
+    'transaction/fetchRecentActivity',
+    async (options: ActivityFetchOptions = {}, { getState, dispatch }) => {
+        const state = getState() as RootState;
+        const selectedAccount = selectSelectedAccount(state);
+        
+        if (!selectedAccount) {
+            throw new Error('No account selected');
+        }
+
+        dispatch(setActivityLoading(true));
+        dispatch(setActivityError(null));
+
+        try {
+            const network = NetworkProvider.getNetwork();
+            const result = await network.fetchRecentActivity(selectedAccount, options);
+
+            dispatch(setActivityData({
+                transactions: result.transactions,
+                totalCount: result.totalCount || 0,
+                hasMore: result.hasMore,
+                currentOffset: result.nextOffset || 0,
+                options
+            }));
+
+            return result;
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Failed to fetch activity';
+            dispatch(setActivityError(errorMessage));
+            throw error;
+        } finally {
+            dispatch(setActivityLoading(false));
+        }
+    }
+);
+
+/**
+ * Load more activity (append to existing data)
+ */
+export const loadMoreActivityAction = createAsyncThunk(
+    'transaction/loadMoreActivity',
+    async (options: ActivityFetchOptions = {}, { getState, dispatch }) => {
+        const state = getState() as RootState;
+        const selectedAccount = selectSelectedAccount(state);
+        const currentOffset = state.transaction.activity.currentOffset;
+        const lastOptions = state.transaction.activity.lastFetchOptions || {} as ActivityFetchOptions;
+        
+        if (!selectedAccount) {
+            throw new Error('No account selected');
+        }
+
+        if (!state.transaction.activity.hasMore) {
+            throw new Error('No more transactions to load');
+        }
+
+        dispatch(setActivityLoading(true));
+
+        try {
+            const network = NetworkProvider.getNetwork();
+            const result = await network.fetchRecentActivity(selectedAccount, {
+                // carry forward prior options (e.g., maxBlock, includeConfirmed),
+                // and ensure we do not re-append mempool on subsequent pages
+                ...lastOptions,
+                ...options,
+                includeMempool: false,
+                offset: currentOffset
+            });
+
+            dispatch(appendActivityData({
+                transactions: result.transactions,
+                totalCount: result.totalCount || 0,
+                hasMore: result.hasMore,
+                currentOffset: result.nextOffset || currentOffset + (options.limit || 20)
+            }));
+
+            return result;
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Failed to load more activity';
+            dispatch(setActivityError(errorMessage));
+            throw error;
+        } finally {
+            dispatch(setActivityLoading(false));
+        }
+    }
+);
+
+/**
+ * Fetch activity for a specific account
+ */
+export const fetchAccountActivityAction = createAsyncThunk(
+    'transaction/fetchAccountActivity',
+    async ({ account, options = {} }: { account: Account; options?: ActivityFetchOptions }, { getState, dispatch }) => {
+        const accountId = account.tag;
+
+        dispatch(setActivityLoading(true));
+        dispatch(setActivityError(null));
+
+        try {
+            const network = NetworkProvider.getNetwork();
+            const result = await network.fetchRecentActivity(account, options);
+
+            dispatch(setAccountActivityData({
+                accountId,
+                transactions: result.transactions,
+                totalCount: result.totalCount || 0,
+                hasMore: result.hasMore,
+                currentOffset: result.nextOffset || 0,
+                options
+            }));
+
+            return result;
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Failed to fetch account activity';
+            dispatch(setActivityError(errorMessage));
+            throw error;
+        } finally {
+            dispatch(setActivityLoading(false));
+        }
+    }
+);
+
+/**
+ * Load more activity for a specific account
+ */
+export const loadMoreAccountActivityAction = createAsyncThunk(
+    'transaction/loadMoreAccountActivity',
+    async ({ account, options = {} }: { account: Account; options?: ActivityFetchOptions }, { getState, dispatch }) => {
+        const state = getState() as RootState;
+        const accountId = account.tag;
+        const cachedData = state.transaction.accountActivity[accountId];
+        
+        if (!cachedData || !cachedData.hasMore) {
+            throw new Error('No more transactions to load for this account');
+        }
+
+        dispatch(setActivityLoading(true));
+
+        try {
+            const network = NetworkProvider.getNetwork();
+            const result = await network.fetchRecentActivity(account, {
+                ...options,
+                offset: cachedData.currentOffset
+            });
+
+            dispatch(appendAccountActivityData({
+                accountId,
+                transactions: result.transactions,
+                totalCount: result.totalCount || 0,
+                hasMore: result.hasMore,
+                currentOffset: result.nextOffset || cachedData.currentOffset + (options.limit || 20)
+            }));
+
+            return result;
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Failed to load more account activity';
+            dispatch(setActivityError(errorMessage));
+            throw error;
+        } finally {
+            dispatch(setActivityLoading(false));
+        }
+    }
+);
+
+/**
+ * Refresh activity data (clear cache and fetch fresh data)
+ */
+export const refreshActivityAction = createAsyncThunk(
+    'transaction/refreshActivity',
+    async (options: ActivityFetchOptions = {}, { getState, dispatch }) => {
+        const state = getState() as RootState;
+        const selectedAccount = selectSelectedAccount(state);
+        
+        if (!selectedAccount) {
+            throw new Error('No account selected');
+        }
+
+        // Clear existing data
+        dispatch({ type: 'transaction/clearActivityData' });
+        
+        // Fetch fresh data
+        return dispatch(fetchRecentActivityAction(options)).unwrap();
+    }
+);
+
+/**
+ * Fetch only confirmed transactions
+ */
+export const fetchConfirmedTransactionsAction = createAsyncThunk(
+    'transaction/fetchConfirmedTransactions',
+    async (options: ActivityFetchOptions = {}, { getState, dispatch }) => {
+        const state = getState() as RootState;
+        const selectedAccount = selectSelectedAccount(state);
+        
+        if (!selectedAccount) {
+            throw new Error('No account selected');
+        }
+
+        return dispatch(fetchRecentActivityAction({
+            ...options,
+            includeMempool: false,
+            includeConfirmed: true
+        })).unwrap();
+    }
+);
+
+/**
+ * Fetch only mempool transactions
+ */
+export const fetchMempoolTransactionsAction = createAsyncThunk(
+    'transaction/fetchMempoolTransactions',
+    async (_, { getState, dispatch }) => {
+        const state = getState() as RootState;
+        const selectedAccount = selectSelectedAccount(state);
+        
+        if (!selectedAccount) {
+            throw new Error('No account selected');
+        }
+
+        dispatch(setActivityLoading(true));
+        dispatch(setActivityError(null));
+
+        try {
+            const network = NetworkProvider.getNetwork();
+            const currentAddress = '0x' + selectedAccount.tag;
+            const mempoolTransactions = await network.fetchMempoolTransactions(currentAddress);
+
+            dispatch(setActivityData({
+                transactions: mempoolTransactions,
+                totalCount: mempoolTransactions.length,
+                hasMore: false,
+                currentOffset: 0,
+                options: { includeMempool: true, includeConfirmed: false }
+            }));
+
+            return mempoolTransactions;
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Failed to fetch mempool transactions';
+            dispatch(setActivityError(errorMessage));
+            throw error;
+        } finally {
+            dispatch(setActivityLoading(false));
+        }
+    }
+);
+
+/**
+ * Refresh activity data and clean up confirmed pending transactions
+ * This action fetches fresh data and automatically removes any pending transactions
+ * that have been confirmed from the pendingTransactions array
+ */
+export const refreshAndCleanupActivityAction = createAsyncThunk(
+    'transaction/refreshAndCleanupActivity',
+    async (options: ActivityFetchOptions = {}, { getState, dispatch }) => {
+        const state = getState() as RootState;
+        const selectedAccount = selectSelectedAccount(state);
+        
+        if (!selectedAccount) {
+            throw new Error('No account selected');
+        }
+
+        dispatch(setActivityLoading(true));
+        dispatch(setActivityError(null));
+
+        try {
+            const network = NetworkProvider.getNetwork();
+            const result = await network.fetchRecentActivity(selectedAccount, options);
+
+            // Get current pending transactions
+            const currentPendingTxs = state.transaction.pendingTransactions;
+            
+            // Find which pending transactions are now confirmed
+            const confirmedTxIds = new Set(
+                result.transactions
+                    .filter(tx => !tx.pending) // Only confirmed transactions
+                    .map(tx => tx.txid)
+            );
+
+            // Remove confirmed transactions from pending list
+            const stillPendingTxs = currentPendingTxs.filter(txId => !confirmedTxIds.has(txId));
+            
+            // If no transactions were returned, clear all pending transactions
+            const finalPendingTxs = result.transactions.length === 0 ? [] : stillPendingTxs;
+            
+            // Update pending transactions if any were confirmed OR if no transactions were returned
+            if (finalPendingTxs.length !== currentPendingTxs.length) {
+                const confirmedCount = currentPendingTxs.length - finalPendingTxs.length;
+                if (confirmedCount > 0 && result.transactions.length > 0) {
+                    console.log(`Cleaned up ${confirmedCount} confirmed transactions from pending list`);
+                } else if (result.transactions.length === 0) {
+                    console.log('No transactions found, clearing all pending transactions');
+                }
+                
+                // Update the pending transactions array
+                dispatch({
+                    type: 'transaction/setPendingTransactions',
+                    payload: finalPendingTxs
+                });
+            }
+
+            // Update activity data
+            dispatch(setActivityData({
+                transactions: result.transactions,
+                totalCount: result.totalCount || 0,
+                hasMore: result.hasMore,
+                currentOffset: result.nextOffset || 0,
+                options
+            }));
+
+            return {
+                ...result,
+                cleanedUpCount: currentPendingTxs.length - stillPendingTxs.length
+            };
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Failed to refresh and cleanup activity';
+            dispatch(setActivityError(errorMessage));
+            throw error;
+        } finally {
+            dispatch(setActivityLoading(false));
+        }
+    }
+);

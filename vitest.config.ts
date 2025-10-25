@@ -23,6 +23,7 @@ export default defineConfig({
             deps: {
                 inline: ['mochimo-wots', 'mochimo-mesh-api-client']
             }
-        }
+        },
+        pool: 'forks'
     }
 }); 

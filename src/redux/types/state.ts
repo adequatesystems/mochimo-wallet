@@ -1,6 +1,5 @@
 import { DecodeResult, EncryptedAccount, EncryptedData, GenericDecodeResult } from '@/crypto';
-import { NetworkType } from '../../types/account';
-import { Account } from '../../types/account';
+import { Account, NetworkType } from '../../types/account';
 
 export interface WalletState {
     initialized: boolean;
@@ -32,6 +31,29 @@ export interface TransactionState {
     isLoading: boolean;
     error: string | null;
     pendingTransactions: string[]; // Array of transaction hashes
+    
+    // Pagination state
+    activity: {
+        isLoading: boolean;
+        error: string | null;
+        transactions: any[]; // WalletTransaction[]
+        totalCount: number;
+        hasMore: boolean;
+        currentOffset: number;
+        lastFetchOptions: any; // ActivityFetchOptions
+    };
+    
+    // Per-account activity cache
+    accountActivity: {
+        [accountId: string]: {
+            transactions: any[]; // WalletTransaction[]
+            totalCount: number;
+            hasMore: boolean;
+            currentOffset: number;
+            lastFetchOptions: any; // ActivityFetchOptions
+            lastUpdated: number;
+        };
+    };
 }
 export interface ImportAccountsOptions {
     mcmData: GenericDecodeResult;
