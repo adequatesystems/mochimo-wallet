@@ -196,7 +196,9 @@ export class MasterSeed {
         }
 
         const salt = crypto.getRandomValues(new Uint8Array(16));
-        const iv = crypto.getRandomValues(new Uint8Array(16));
+        // AES-GCM uses a 96-bit (12-byte) nonce per SP 800-38D. Decrypt reads the
+        // IV length from the stored record, so existing 16-byte-IV blobs still work.
+        const iv = crypto.getRandomValues(new Uint8Array(12));
 
         const key = await crypto.subtle.importKey(
             'raw',
