@@ -9,7 +9,26 @@ import { Derivation } from '../redux/utils/derivation';
 import CryptoJS from 'crypto-js';
 
 
-const PBKDF2_ITERATIONS = process.env.NODE_ENV === 'test' ? 1000 : 100000;
+// Existing keystores were always encrypted with 100000 PBKDF2 iterations, so
+// this doubles as the production default and a hard floor: the effective count
+// can never drop below it, regardless of NODE_ENV or any override. This keeps
+// old keystores decryptable while ensuring test/config code cannot weaken it.
+const PBKDF2_ITERATIONS_FLOOR = 100000;
+let pbkdf2IterationsOverride: number | undefined;
+
+/**
+ * Test-only hook to configure the PBKDF2 iteration count. The value is still
+ * clamped to PBKDF2_ITERATIONS_FLOOR, so security can never be weakened below
+ * the production default.
+ */
+export function setPbkdf2Iterations(iterations: number | undefined): void {
+    pbkdf2IterationsOverride = iterations;
+}
+
+/** Returns the effective PBKDF2 iteration count, never below the hard floor. */
+export function getPbkdf2Iterations(): number {
+    return Math.max(PBKDF2_ITERATIONS_FLOOR, pbkdf2IterationsOverride ?? PBKDF2_ITERATIONS_FLOOR);
+}
 
 export interface EncryptedSeed {
     data: string;      // Base64 encrypted seed
@@ -210,7 +229,7 @@ export class MasterSeed {
             {
                 name: 'PBKDF2',
                 salt,
-                iterations: PBKDF2_ITERATIONS,
+                iterations: getPbkdf2Iterations(),
                 hash: 'SHA-256'
             },
             key,
@@ -247,7 +266,7 @@ export class MasterSeed {
             {
                 name: 'PBKDF2',
                 salt: Buffer.from(encrypted.salt, 'base64'),
-                iterations: PBKDF2_ITERATIONS,
+                iterations: getPbkdf2Iterations(),
                 hash: 'SHA-256'
             },
             key,

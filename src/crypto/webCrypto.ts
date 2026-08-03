@@ -6,7 +6,26 @@ const ALGORITHM = 'AES-CBC';
 const KEY_LENGTH = 256;
 const SALT_LENGTH = 16;
 const IV_LENGTH = 16;
-const ITERATIONS = process.env.NODE_ENV === 'test' ? 10 : 100000;
+// Existing encrypted blobs were always produced with 100000 PBKDF2 iterations,
+// so this doubles as the production default and a hard floor: the effective
+// count can never drop below it, regardless of NODE_ENV or any override. This
+// keeps old data decryptable while ensuring it cannot be weakened.
+const ITERATIONS_FLOOR = 100000;
+let iterationsOverride: number | undefined;
+
+/**
+ * Test-only hook to configure the PBKDF2 iteration count. The value is still
+ * clamped to ITERATIONS_FLOOR, so security can never be weakened below the
+ * production default.
+ */
+export function setPbkdf2Iterations(iterations: number | undefined): void {
+    iterationsOverride = iterations;
+}
+
+/** Returns the effective PBKDF2 iteration count, never below the hard floor. */
+export function getPbkdf2Iterations(): number {
+    return Math.max(ITERATIONS_FLOOR, iterationsOverride ?? ITERATIONS_FLOOR);
+}
 
 export interface EncryptedData {
     data: string;      // Base64 encrypted data
@@ -34,7 +53,7 @@ async function deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey>
         {
             name: 'PBKDF2',
             salt,
-            iterations: ITERATIONS,
+            iterations: getPbkdf2Iterations(),
             hash: 'SHA-256'
         },
         keyMaterial,
