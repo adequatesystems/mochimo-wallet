@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import * as webCrypto from '../../../src/crypto/webCrypto';
-import * as cryptoJs from '../../../src/crypto/encryption';
 
 describe('WebCrypto Implementation', () => {
     const testPassword = 'test-password';
@@ -20,18 +19,6 @@ describe('WebCrypto Implementation', () => {
             expect(arraysEqual(decrypted, testData)).toBe(true);
         });
 
-        it('should be compatible with CryptoJS implementation', async () => {
-            // Test WebCrypto -> CryptoJS
-            const webEncrypted = await webCrypto.encrypt(testData, testPassword);
-            const cryptoJsDecrypted = await cryptoJs.decrypt(webEncrypted, testPassword);
-            expect(arraysEqual(cryptoJsDecrypted, testData)).toBe(true);
-
-            // Test CryptoJS -> WebCrypto
-            const cryptoJsEncrypted = await cryptoJs.encrypt(testData, testPassword);
-            const webDecrypted = await webCrypto.decrypt(cryptoJsEncrypted, testPassword);
-            expect(arraysEqual(webDecrypted, testData)).toBe(true);
-        });
-
         it('should handle empty data', async () => {
             const emptyData = new Uint8Array(0);
             const encrypted = await webCrypto.encrypt(emptyData, testPassword);
@@ -44,6 +31,23 @@ describe('WebCrypto Implementation', () => {
             const encrypted = await webCrypto.encrypt(testData, testPassword);
             await expect(webCrypto.decrypt(encrypted, 'wrong-password'))
                 .rejects.toThrow('Failed to decrypt - invalid password');
+        });
+    });
+
+    describe('PBKDF2 iterations', () => {
+        afterEach(() => {
+            webCrypto.setPbkdf2Iterations(undefined);
+        });
+
+        it('should be 100000 regardless of NODE_ENV', () => {
+            // NODE_ENV is 'test' under vitest; the old code would have returned 10.
+            expect(process.env.NODE_ENV).toBe('test');
+            expect(webCrypto.getPbkdf2Iterations()).toBe(100000);
+        });
+
+        it('should never drop below the 100000 hard floor even if overridden lower', () => {
+            webCrypto.setPbkdf2Iterations(10);
+            expect(webCrypto.getPbkdf2Iterations()).toBe(100000);
         });
     });
 

@@ -1,11 +1,31 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { MasterSeed } from '../../../src/core/MasterSeed';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { MasterSeed, getPbkdf2Iterations, setPbkdf2Iterations } from '../../../src/core/MasterSeed';
 
 describe('MasterSeed', () => {
     let masterSeed: MasterSeed;
 
     beforeEach(async () => {
         masterSeed = await MasterSeed.create();
+    });
+
+    describe('PBKDF2 iterations', () => {
+        afterEach(() => {
+            // Reset any override so other tests use the default.
+            setPbkdf2Iterations(undefined);
+        });
+
+        it('should be 100000 regardless of NODE_ENV', () => {
+            // NODE_ENV is 'test' under vitest; the old code would have returned 1000.
+            expect(process.env.NODE_ENV).toBe('test');
+            expect(getPbkdf2Iterations()).toBe(100000);
+        });
+
+        it('should never drop below the 100000 hard floor even if overridden lower', () => {
+            setPbkdf2Iterations(10);
+            expect(getPbkdf2Iterations()).toBe(100000);
+            setPbkdf2Iterations(0);
+            expect(getPbkdf2Iterations()).toBe(100000);
+        });
     });
 
     describe('create', () => {
