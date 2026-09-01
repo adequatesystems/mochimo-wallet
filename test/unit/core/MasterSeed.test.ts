@@ -170,6 +170,67 @@ describe('MasterSeed', () => {
         });
     });
 
+    describe('GCM nonce', () => {
+        it('should use a 12-byte IV for new encryptions and round-trip', async () => {
+            const seed = await MasterSeed.create();
+            const encrypted = await seed.export('test_password');
+
+            // New blobs must use a 96-bit GCM nonce.
+            expect(Buffer.from(encrypted.iv, 'base64').length).toBe(12);
+
+            // And must still decrypt.
+            const imported = await MasterSeed.import(encrypted, 'test_password');
+            expect(await imported.toPhrase()).toEqual(await seed.toPhrase());
+        });
+
+        it('should still decrypt legacy 16-byte-IV blobs', async () => {
+            // Simulate a legacy record by re-encrypting with a 16-byte IV using the
+            // same PBKDF2/AES-GCM parameters the previous version produced.
+            const seed = await MasterSeed.create();
+            const password = 'legacy_password';
+            const salt = crypto.getRandomValues(new Uint8Array(16));
+            const legacyIv = crypto.getRandomValues(new Uint8Array(16));
+
+            const keyMaterial = await crypto.subtle.importKey(
+                'raw',
+                new TextEncoder().encode(password),
+                'PBKDF2',
+                false,
+                ['deriveKey']
+            );
+            const derivedKey = await crypto.subtle.deriveKey(
+                { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+                keyMaterial,
+                { name: 'AES-GCM', length: 256 },
+                false,
+                ['encrypt']
+            );
+            // Grab the raw seed bytes via a fresh export/import cycle is not possible
+            // without exposing the seed, so encrypt a known plaintext and assert the
+            // decrypt path honours the stored 16-byte IV length.
+            const plaintext = new TextEncoder().encode('legacy-seed-bytes');
+            const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: legacyIv }, derivedKey, plaintext);
+            const legacyRecord = {
+                data: Buffer.from(ct).toString('base64'),
+                iv: Buffer.from(legacyIv).toString('base64'),
+                salt: Buffer.from(salt).toString('base64')
+            };
+
+            expect(Buffer.from(legacyRecord.iv, 'base64').length).toBe(16);
+            const ms = await MasterSeed.importFromDerivedKey(
+                legacyRecord,
+                await crypto.subtle.deriveKey(
+                    { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
+                    keyMaterial,
+                    { name: 'AES-GCM', length: 256 },
+                    false,
+                    ['decrypt']
+                )
+            );
+            expect(ms).toBeDefined();
+        });
+    });
+
     describe('Derived Key Import', () => {
         it('should import from derived key', async () => {
             const seed = await MasterSeed.create();
